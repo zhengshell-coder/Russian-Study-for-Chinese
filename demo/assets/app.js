@@ -3,13 +3,24 @@ import { days } from "./curriculum-year.js";
 const storageKey = "russian-study-tool-demo-v8";
 
 const learnSteps = [
-  { key: "foundation", title: "学习 1 · 基础", short: "基础" },
-  { key: "scene", title: "学习 2 · 场景", short: "场景" },
-  { key: "voice", title: "学习 3 · 跟读", short: "跟读" },
+  { key: "foundation", title: "part1 基础", short: "基础" },
+  { key: "scene", title: "part2 场景", short: "场景" },
+  { key: "voice", title: "part3 跟读", short: "跟读" },
 ];
 
 const state = {
   progress: loadProgress(),
+  ui: {
+    foundationIndex: {},
+    sceneIndex: {},
+    cycleFoundationSection: {},
+    cycleFoundationItem: {},
+    cycleSceneSection: {},
+    cycleSceneItem: {},
+    reviewIndex: {},
+    cycleReviewSection: {},
+    cycleReviewItem: {},
+  },
   russianVoice: null,
   recognition: null,
   voiceResult: createInitialVoiceResult(),
@@ -17,9 +28,8 @@ const state = {
 };
 
 const els = {
+  cycleTitle: document.querySelector("#cycle-title"),
   unitTitle: document.querySelector("#unit-title"),
-  dayCounter: document.querySelector("#day-counter"),
-  streakValue: document.querySelector("#streak-value"),
   dayBadge: document.querySelector("#day-badge"),
   stepDots: document.querySelector("#step-dots"),
   progressLabel: document.querySelector("#progress-label"),
@@ -43,7 +53,6 @@ const els = {
 init();
 
 function init() {
-  syncStreak();
   bindEvents();
   initVoices();
   registerPwa();
@@ -78,8 +87,6 @@ function loadProgress() {
     dayIndex: 0,
     page: "learn",
     learnStepIndex: 0,
-    streakDays: 1,
-    lastStudyDate: todayStamp(),
     reviewRemembered: {},
   };
   const saved = window.localStorage.getItem(storageKey);
@@ -89,7 +96,18 @@ function loadProgress() {
   }
 
   try {
-    return { ...initial, ...JSON.parse(saved) };
+    const parsed = JSON.parse(saved);
+    return {
+      dayIndex: Number.isInteger(parsed.dayIndex) ? parsed.dayIndex : initial.dayIndex,
+      page: parsed.page === "review" ? "review" : "learn",
+      learnStepIndex: Number.isInteger(parsed.learnStepIndex)
+        ? parsed.learnStepIndex
+        : initial.learnStepIndex,
+      reviewRemembered:
+        parsed.reviewRemembered && typeof parsed.reviewRemembered === "object"
+          ? parsed.reviewRemembered
+          : initial.reviewRemembered,
+    };
   } catch {
     return initial;
   }
@@ -97,25 +115,6 @@ function loadProgress() {
 
 function saveProgress() {
   window.localStorage.setItem(storageKey, JSON.stringify(state.progress));
-}
-
-function todayStamp() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function syncStreak() {
-  const today = todayStamp();
-
-  if (state.progress.lastStudyDate === today) {
-    return;
-  }
-
-  const last = new Date(state.progress.lastStudyDate);
-  const current = new Date(today);
-  const diff = Math.round((current - last) / 86400000);
-  state.progress.streakDays = diff === 1 ? state.progress.streakDays + 1 : 1;
-  state.progress.lastStudyDate = today;
-  saveProgress();
 }
 
 function getCurrentDay() {
@@ -157,21 +156,21 @@ function render() {
 function renderHeader() {
   const day = getCurrentDay();
   const isCycleDay = day.cycleDay === 12;
-  const cycleText = `周期 ${day.cycleNumber} / 24 · 本轮第 ${day.cycleDay} 天`;
+  const cycleText = `周期 ${day.cycleNumber} · 第 ${day.cycleDay} 天`;
+  const unitText = day.title.replace(`${day.cycleLabel} · `, "");
 
-  els.unitTitle.textContent = `第 ${day.cycleDay} 天 · ${day.title}`;
-  els.dayCounter.textContent = `${day.cycleDay} / 12`;
-  els.streakValue.textContent = String(state.progress.streakDays);
+  els.cycleTitle.textContent = cycleText;
+  els.unitTitle.textContent = unitText;
   els.dayBadge.textContent = String(day.cycleDay);
   els.progressLabel.textContent = state.progress.page === "learn" ? "学习页" : "复习检查";
   els.progressNote.textContent =
     state.progress.page === "learn"
       ? isCycleDay
-        ? `${cycleText} · 这一天会把本轮前 11 天内容整体再过一遍`
-        : `${cycleText} · 当前在 ${getCurrentLearnStep().title}`
+        ? "今天把本轮前 11 天内容整体再过一遍。"
+        : `当前在 ${getCurrentLearnStep().title}`
       : isCycleDay
-        ? `${cycleText} · 这是本轮整轮复盘；未确认默认未记住。`
-        : `${cycleText} · 逐项确认是否记住；未确认默认未记住。`;
+        ? "这是本轮整轮复盘；未确认默认未记住。"
+        : "逐项确认是否记住；未确认默认未记住。";
 }
 
 function renderStepDots() {
@@ -224,35 +223,175 @@ function renderLearnPage() {
   renderVoice(day);
 }
 
+function clampIndex(index, max) {
+  if (max <= 0) {
+    return 0;
+  }
+
+  return Math.min(Math.max(index, 0), max - 1);
+}
+
+function getUiIndex(bucket, key, max) {
+  const store = state.ui[bucket];
+  const current = clampIndex(store[key] ?? 0, max);
+  store[key] = current;
+  return current;
+}
+
+function setUiIndex(bucket, key, index, max) {
+  state.ui[bucket][key] = clampIndex(index, max);
+  render();
+}
+
+function createChipRow(items, index, onSelect, getLabel) {
+  const row = document.createElement("div");
+  row.className = "focus-chip-row";
+
+  items.forEach((item, itemIndex) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `focus-chip${itemIndex === index ? " focus-chip--active" : ""}`;
+    button.textContent = getLabel(item, itemIndex);
+    button.addEventListener("click", () => onSelect(itemIndex));
+    row.appendChild(button);
+  });
+
+  return row;
+}
+
+function createPager(items, index, onSelect, getLabel, renderCard) {
+  const wrapper = document.createElement("section");
+  wrapper.className = "focus-stack";
+
+  if (items.length > 1) {
+    wrapper.appendChild(createChipRow(items, index, onSelect, getLabel));
+  }
+
+  const viewport = document.createElement("div");
+  viewport.className = "focus-viewport";
+  viewport.appendChild(renderCard(items[index], index));
+  wrapper.appendChild(viewport);
+
+  if (items.length > 1) {
+    const nav = document.createElement("div");
+    nav.className = "focus-nav";
+
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "soft-btn";
+    prev.textContent = "上一项";
+    prev.disabled = index === 0;
+    prev.addEventListener("click", () => onSelect(index - 1));
+
+    const status = document.createElement("span");
+    status.className = "focus-nav__status";
+    status.textContent = `${index + 1} / ${items.length}`;
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "primary-btn";
+    next.textContent = "下一项";
+    next.disabled = index === items.length - 1;
+    next.addEventListener("click", () => onSelect(index + 1));
+
+    nav.append(prev, status, next);
+    wrapper.appendChild(nav);
+  }
+
+  return wrapper;
+}
+
+function createFoundationCard(item) {
+  const card = document.createElement("article");
+  card.className = "focus-card learn-card";
+  card.innerHTML = `
+    <span class="focus-card__label">场景基础</span>
+    <strong class="learn-card__title ru-text">${item.ru}</strong>
+    <div class="learn-card__meta"><span class="phonetic-text">${item.ipa}</span> · ${item.zh}</div>
+    <p class="learn-card__note">
+      <span class="learn-card__usage">part2 会用到</span>
+      <span class="ru-text">${item.exampleRu}</span>
+    </p>
+    <div class="focus-card__translation">
+      <span class="phonetic-text">${item.exampleIpa}</span>
+      <span>${item.exampleZh}</span>
+    </div>
+    <button class="listen-btn" type="button">听</button>
+  `;
+  card.querySelector("button").addEventListener("click", () => {
+    speakText(item.exampleRu, 0.78);
+  });
+  return card;
+}
+
+function buildSceneItems(day) {
+  return [
+    ...day.scene.words.map((word, index) => ({
+      key: `word-${index}`,
+      label: `单词 ${index + 1}`,
+      kind: "单词",
+      ru: word.ru,
+      ipa: word.ipa,
+      zh: word.zh,
+      speakText: word.ru,
+    })),
+    ...getScenePhrases(day).map((phrase, index) => ({
+      key: `phrase-${index}`,
+      label: index === 0 ? "整句" : `整句 ${index + 1}`,
+      kind: "整句",
+      ru: phrase.ru,
+      ipa: phrase.ipa,
+      zh: phrase.zh,
+      speakText: phrase.ru,
+    })),
+  ];
+}
+
+function createSceneCard(item) {
+  const card = document.createElement("article");
+  card.className = "focus-card learn-card";
+  card.innerHTML = `
+    <span class="focus-card__label">${item.kind}</span>
+    <strong class="learn-card__title ru-text">${item.ru}</strong>
+    <div class="focus-card__translation">
+      <span class="phonetic-text">${item.ipa}</span>
+      <span>${item.zh}</span>
+    </div>
+    <button class="listen-btn" type="button">听</button>
+  `;
+  card.querySelector("button").addEventListener("click", () => {
+    speakText(item.speakText, 0.82);
+  });
+  return card;
+}
+
+function createCycleSectionIntro(section, countLabel) {
+  const intro = document.createElement("article");
+  intro.className = "section-intro";
+  intro.innerHTML = `
+    <span class="section-intro__label">复盘分组</span>
+    <strong>第 ${section.day} 天 · ${section.title}</strong>
+    <span>${countLabel}</span>
+  `;
+  return intro;
+}
+
 function renderFoundation(day) {
   if (day.cycleSections) {
     renderCycleFoundation(day);
     return;
   }
 
-  const grid = document.createElement("div");
-  grid.className = "compact-grid";
-
-  day.foundation.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = "learn-card";
-    card.innerHTML = `
-      <strong class="learn-card__title ru-text">${item.ru}</strong>
-      <div class="learn-card__meta"><span class="phonetic-text">${item.ipa}</span> · ${item.zh}</div>
-      <p class="learn-card__note">
-        <span class="learn-card__usage">part2 用法</span>
-        <span class="ru-text">${item.exampleRu}</span>
-        <span class="learn-card__meta"><span class="phonetic-text">${item.exampleIpa}</span> · ${item.exampleZh}</span>
-      </p>
-      <button class="listen-btn" type="button">听</button>
-    `;
-    card.querySelector("button").addEventListener("click", () => {
-      speakText(item.exampleRu, 0.78);
-    });
-    grid.appendChild(card);
-  });
-
-  els.learnStage.appendChild(grid);
+  const key = String(day.day);
+  const index = getUiIndex("foundationIndex", key, day.foundation.length);
+  const pager = createPager(
+    day.foundation,
+    index,
+    (nextIndex) => setUiIndex("foundationIndex", key, nextIndex, day.foundation.length),
+    (_, itemIndex) => `核心 ${itemIndex + 1}`,
+    (item) => createFoundationCard(item),
+  );
+  els.learnStage.appendChild(pager);
 }
 
 function renderScene(day) {
@@ -261,148 +400,117 @@ function renderScene(day) {
     return;
   }
 
-  const card = document.createElement("article");
-  card.className = "learn-card";
-  card.innerHTML = `<div class="scene-stack"></div>`;
-  const stack = card.querySelector(".scene-stack");
-
-  day.scene.words.forEach((word) => {
-    const line = document.createElement("div");
-    line.className = "scene-word";
-    line.innerHTML = `
-      <strong class="ru-text">${word.ru}</strong>
-      <span><span class="phonetic-text">${word.ipa}</span> · ${word.zh}</span>
-      <button class="listen-btn" type="button">听</button>
-    `;
-    line.querySelector("button").addEventListener("click", () => {
-      speakText(word.ru, 0.82);
-    });
-    stack.appendChild(line);
-  });
-
-  getScenePhrases(day).forEach((item) => {
-    const phrase = document.createElement("div");
-    phrase.className = "scene-phrase";
-    phrase.innerHTML = `
-      <strong class="ru-text">${item.ru}</strong>
-      <span><span class="phonetic-text">${item.ipa}</span> · ${item.zh}</span>
-      <button class="listen-btn" type="button">听</button>
-    `;
-    phrase.querySelector("button").addEventListener("click", () => {
-      speakText(item.ru, 0.82);
-    });
-    stack.appendChild(phrase);
-  });
-
-  els.learnStage.appendChild(card);
+  const items = buildSceneItems(day);
+  const key = String(day.day);
+  const index = getUiIndex("sceneIndex", key, items.length);
+  const pager = createPager(
+    items,
+    index,
+    (nextIndex) => setUiIndex("sceneIndex", key, nextIndex, items.length),
+    (item) => item.label,
+    (item) => createSceneCard(item),
+  );
+  els.learnStage.appendChild(pager);
 }
 
 function renderCycleFoundation(day) {
+  const sectionKey = String(day.day);
+  const sectionIndex = getUiIndex(
+    "cycleFoundationSection",
+    sectionKey,
+    day.cycleSections.length,
+  );
+  const section = day.cycleSections[sectionIndex];
+  const itemKey = `${day.day}-${section.day}`;
+  const itemIndex = getUiIndex(
+    "cycleFoundationItem",
+    itemKey,
+    section.foundation.length,
+  );
   const wrapper = document.createElement("div");
-  wrapper.className = "cycle-section-list";
-
-  day.cycleSections.forEach((section, index) => {
-    const details = document.createElement("details");
-    details.className = "cycle-section";
-    if (index === 0) {
-      details.open = true;
-    }
-
-    const summary = document.createElement("summary");
-    summary.className = "cycle-section__summary";
-    summary.innerHTML = `
-      <span class="cycle-section__day">第 ${section.day} 天</span>
-      <strong>${section.title}</strong>
-      <span class="cycle-section__count">${section.foundation.length} 个词块</span>
-    `;
-    details.appendChild(summary);
-
-    const grid = document.createElement("div");
-    grid.className = "compact-grid compact-grid--cycle";
-
-    section.foundation.forEach((item) => {
-      const card = document.createElement("article");
-      card.className = "learn-card";
-      card.innerHTML = `
-        <strong class="learn-card__title ru-text">${item.ru}</strong>
-        <div class="learn-card__meta"><span class="phonetic-text">${item.ipa}</span> · ${item.zh}</div>
-        <p class="learn-card__note">
-          <span class="learn-card__usage">part2 用法</span>
-          <span class="ru-text">${item.exampleRu}</span>
-          <span class="learn-card__meta"><span class="phonetic-text">${item.exampleIpa}</span> · ${item.exampleZh}</span>
-        </p>
-        <button class="listen-btn" type="button">听</button>
-      `;
-      card.querySelector("button").addEventListener("click", () => {
-        speakText(item.exampleRu, 0.78);
-      });
-      grid.appendChild(card);
-    });
-
-    details.appendChild(grid);
-    wrapper.appendChild(details);
-  });
-
+  wrapper.className = "cycle-focus";
+  wrapper.appendChild(
+    createChipRow(
+      day.cycleSections,
+      sectionIndex,
+      (nextIndex) =>
+        setUiIndex(
+          "cycleFoundationSection",
+          sectionKey,
+          nextIndex,
+          day.cycleSections.length,
+        ),
+      (item) => `第 ${item.day} 天`,
+    ),
+  );
+  wrapper.appendChild(
+    createCycleSectionIntro(section, `${section.foundation.length} 个基础词块`),
+  );
+  wrapper.appendChild(
+    createPager(
+      section.foundation,
+      itemIndex,
+      (nextIndex) =>
+        setUiIndex(
+          "cycleFoundationItem",
+          itemKey,
+          nextIndex,
+          section.foundation.length,
+        ),
+      (_, index) => `核心 ${index + 1}`,
+      (item) => createFoundationCard(item),
+    ),
+  );
   els.learnStage.appendChild(wrapper);
 }
 
 function renderCycleScene(day) {
+  const sectionKey = String(day.day);
+  const sectionIndex = getUiIndex("cycleSceneSection", sectionKey, day.cycleSections.length);
+  const section = day.cycleSections[sectionIndex];
+  const items = [
+    ...section.words.map((word, index) => ({
+      key: `word-${section.day}-${index}`,
+      label: `单词 ${index + 1}`,
+      kind: "单词",
+      ru: word.ru,
+      ipa: word.ipa,
+      zh: word.zh,
+      speakText: word.ru,
+    })),
+    ...section.phrases.map((phrase, index) => ({
+      key: `phrase-${section.day}-${index}`,
+      label: index === 0 ? "整句" : `整句 ${index + 1}`,
+      kind: "整句",
+      ru: phrase.ru,
+      ipa: phrase.ipa,
+      zh: phrase.zh,
+      speakText: phrase.ru,
+    })),
+  ];
+  const itemKey = `${day.day}-${section.day}`;
+  const itemIndex = getUiIndex("cycleSceneItem", itemKey, items.length);
   const wrapper = document.createElement("div");
-  wrapper.className = "cycle-section-list";
-
-  day.cycleSections.forEach((section, index) => {
-    const details = document.createElement("details");
-    details.className = "cycle-section";
-    if (index === 0) {
-      details.open = true;
-    }
-
-    const summary = document.createElement("summary");
-    summary.className = "cycle-section__summary";
-    summary.innerHTML = `
-      <span class="cycle-section__day">第 ${section.day} 天</span>
-      <strong>${section.title}</strong>
-      <span class="cycle-section__count">${section.phrases.length} 句</span>
-    `;
-    details.appendChild(summary);
-
-    const card = document.createElement("article");
-    card.className = "learn-card";
-    card.innerHTML = `<div class="scene-stack"></div>`;
-    const stack = card.querySelector(".scene-stack");
-
-    section.words.forEach((word) => {
-      const line = document.createElement("div");
-      line.className = "scene-word";
-      line.innerHTML = `
-        <strong class="ru-text">${word.ru}</strong>
-        <span><span class="phonetic-text">${word.ipa}</span> · ${word.zh}</span>
-        <button class="listen-btn" type="button">听</button>
-      `;
-      line.querySelector("button").addEventListener("click", () => {
-        speakText(word.ru, 0.82);
-      });
-      stack.appendChild(line);
-    });
-
-    section.phrases.forEach((item) => {
-      const phrase = document.createElement("div");
-      phrase.className = "scene-phrase";
-      phrase.innerHTML = `
-        <strong class="ru-text">${item.ru}</strong>
-        <span><span class="phonetic-text">${item.ipa}</span> · ${item.zh}</span>
-        <button class="listen-btn" type="button">听</button>
-      `;
-      phrase.querySelector("button").addEventListener("click", () => {
-        speakText(item.ru, 0.82);
-      });
-      stack.appendChild(phrase);
-    });
-
-    details.appendChild(card);
-    wrapper.appendChild(details);
-  });
-
+  wrapper.className = "cycle-focus";
+  wrapper.appendChild(
+    createChipRow(
+      day.cycleSections,
+      sectionIndex,
+      (nextIndex) =>
+        setUiIndex("cycleSceneSection", sectionKey, nextIndex, day.cycleSections.length),
+      (item) => `第 ${item.day} 天`,
+    ),
+  );
+  wrapper.appendChild(createCycleSectionIntro(section, `${items.length} 项场景内容`));
+  wrapper.appendChild(
+    createPager(
+      items,
+      itemIndex,
+      (nextIndex) => setUiIndex("cycleSceneItem", itemKey, nextIndex, items.length),
+      (item) => item.label,
+      (item) => createSceneCard(item),
+    ),
+  );
   els.learnStage.appendChild(wrapper);
 }
 
@@ -472,7 +580,10 @@ function renderVoice(day) {
 
 function renderReviewPage() {
   const day = getCurrentDay();
-  els.reviewTitle.textContent = `第 ${day.day} 天复习检查`;
+  els.reviewTitle.textContent =
+    day.cycleDay === 12
+      ? `周期 ${day.cycleNumber} · 整轮复习检查`
+      : `周期 ${day.cycleNumber} · 第 ${day.cycleDay} 天复习检查`;
   els.reviewNote.textContent = "每一项都确认一次；如果没点确认，就默认还没记住。";
   els.reviewList.innerHTML = "";
 
@@ -481,137 +592,115 @@ function renderReviewPage() {
     return;
   }
 
-  day.review.forEach((item, index) => {
-    const rememberKey = `${day.day}-${index}`;
-    const remembered = state.progress.reviewRemembered[rememberKey] ?? null;
-    const statusText =
-      remembered === true
-        ? "已确认：记住了"
-        : remembered === false
-          ? "已确认：还没记住"
-          : "未确认，默认未记住";
-    const card = document.createElement("article");
-    card.className = "review-card";
-    card.innerHTML = `
-      <span class="review-card__label">${item.label}</span>
-      <p class="review-card__prompt">${item.prompt}</p>
-      <div class="review-answer">
-        <span class="ru-text">${item.answerRu}</span>
-        <span class="phonetic-text">${item.answerIpa}</span>
-      </div>
-      <div class="review-check">
-        <span class="review-status${remembered === true ? " review-status--yes" : remembered === false ? " review-status--no" : ""}">${statusText}</span>
-        <button class="answer-btn" data-review="yes" type="button">记住了</button>
-        <button class="ghost-btn" data-review="no" type="button">还没记住</button>
-      </div>
-    `;
-
-    card.querySelector('[data-review="yes"]').addEventListener("click", () => {
-      state.progress.reviewRemembered[rememberKey] = true;
-      saveProgress();
-      renderReviewPage();
-    });
-
-    card.querySelector('[data-review="no"]').addEventListener("click", () => {
-      state.progress.reviewRemembered[rememberKey] = false;
-      saveProgress();
-      renderReviewPage();
-    });
-
-    els.reviewList.appendChild(card);
-  });
+  const key = String(day.day);
+  const index = getUiIndex("reviewIndex", key, day.review.length);
+  const pager = createPager(
+    day.review,
+    index,
+    (nextIndex) => setUiIndex("reviewIndex", key, nextIndex, day.review.length),
+    (item) => item.label,
+    (item, itemIndex) => createReviewCard(day.day, item, `${day.day}-${itemIndex}`),
+  );
+  els.reviewList.appendChild(pager);
 }
 
 function renderCycleReview(day) {
-  day.cycleSections.forEach((section, sectionIndex) => {
-    const group = document.createElement("section");
-    group.className = "review-group";
+  const sections = [
+    ...day.cycleSections.map((section) => ({
+      key: `day-${section.day}`,
+      day: section.day,
+      title: section.title,
+      countLabel: `${section.review.length} 项复习`,
+      reviewItems: section.review.map((item, itemIndex) => ({
+        item,
+        rememberKey: `${day.day}-cycle-${section.day}-${itemIndex}`,
+      })),
+    })),
+    {
+      key: "final",
+      day: 12,
+      title: "整轮复盘",
+      countLabel: "最后 1 项整合复习",
+      reviewItems: [
+        {
+          item: {
+            label: "整轮复盘",
+            prompt: "这一轮结束后，把整合句完整读一遍。",
+            answerRu: "Я из Китая и немного говорю по-русски.",
+            answerIpa: "[ya iz kee-TA-ya i ni-MNO-ga ga-va-RYOO pa-ROOS-kee]",
+          },
+          rememberKey: `${day.day}-cycle-final`,
+        },
+      ],
+    },
+  ];
+  const sectionKey = String(day.day);
+  const sectionIndex = getUiIndex("cycleReviewSection", sectionKey, sections.length);
+  const section = sections[sectionIndex];
+  const itemKey = `${day.day}-${section.key}`;
+  const itemIndex = getUiIndex("cycleReviewItem", itemKey, section.reviewItems.length);
 
-    const title = document.createElement("div");
-    title.className = "review-group__title";
-    title.innerHTML = `<span>第 ${section.day} 天</span><strong>${section.title}</strong>`;
-    group.appendChild(title);
+  const wrapper = document.createElement("div");
+  wrapper.className = "cycle-focus";
+  wrapper.appendChild(
+    createChipRow(
+      sections,
+      sectionIndex,
+      (nextIndex) => setUiIndex("cycleReviewSection", sectionKey, nextIndex, sections.length),
+      (item) => (item.key === "final" ? "整轮" : `第 ${item.day} 天`),
+    ),
+  );
+  wrapper.appendChild(createCycleSectionIntro(section, section.countLabel));
+  wrapper.appendChild(
+    createPager(
+      section.reviewItems,
+      itemIndex,
+      (nextIndex) =>
+        setUiIndex("cycleReviewItem", itemKey, nextIndex, section.reviewItems.length),
+      (entry) => entry.item.label,
+      (entry) => createReviewCard(day.day, entry.item, entry.rememberKey),
+    ),
+  );
+  els.reviewList.appendChild(wrapper);
+}
 
-    section.review.forEach((item, itemIndex) => {
-      const rememberKey = `${day.day}-cycle-${section.day}-${itemIndex}`;
-      const remembered = state.progress.reviewRemembered[rememberKey] ?? null;
-      const statusText =
-        remembered === true
-          ? "已确认：记住了"
-          : remembered === false
-            ? "已确认：还没记住"
-            : "未确认，默认未记住";
-      const card = document.createElement("article");
-      card.className = "review-card";
-      card.innerHTML = `
-        <span class="review-card__label">${item.label}</span>
-        <p class="review-card__prompt">${item.prompt}</p>
-        <div class="review-answer">
-          <span class="ru-text">${item.answerRu}</span>
-          <span class="phonetic-text">${item.answerIpa}</span>
-        </div>
-        <div class="review-check">
-          <span class="review-status${remembered === true ? " review-status--yes" : remembered === false ? " review-status--no" : ""}">${statusText}</span>
-          <button class="answer-btn" data-review="yes" type="button">记住了</button>
-          <button class="ghost-btn" data-review="no" type="button">还没记住</button>
-        </div>
-      `;
-
-      card.querySelector('[data-review="yes"]').addEventListener("click", () => {
-        state.progress.reviewRemembered[rememberKey] = true;
-        saveProgress();
-        renderReviewPage();
-      });
-
-      card.querySelector('[data-review="no"]').addEventListener("click", () => {
-        state.progress.reviewRemembered[rememberKey] = false;
-        saveProgress();
-        renderReviewPage();
-      });
-
-      group.appendChild(card);
-    });
-
-    els.reviewList.appendChild(group);
-  });
-
-  const finalRememberKey = `${day.day}-cycle-final`;
-  const finalRemembered = state.progress.reviewRemembered[finalRememberKey] ?? null;
-  const finalStatusText =
-    finalRemembered === true
+function createReviewCard(dayNumber, item, rememberKey) {
+  const remembered = state.progress.reviewRemembered[rememberKey] ?? null;
+  const statusText =
+    remembered === true
       ? "已确认：记住了"
-      : finalRemembered === false
+      : remembered === false
         ? "已确认：还没记住"
         : "未确认，默认未记住";
-  const finalCard = document.createElement("article");
-  finalCard.className = "review-card review-card--final";
-  finalCard.innerHTML = `
-    <span class="review-card__label">整轮复盘</span>
-    <p class="review-card__prompt">这一轮结束后，把整合句完整读一遍。</p>
+  const card = document.createElement("article");
+  card.className = `focus-card review-card${item.label === "整轮复盘" ? " review-card--final" : ""}`;
+  card.innerHTML = `
+    <span class="review-card__label">${item.label}</span>
+    <p class="review-card__prompt">${item.prompt}</p>
     <div class="review-answer">
-      <span class="ru-text">Я из Китая и немного говорю по-русски.</span>
-      <span class="phonetic-text">[ya iz kee-TA-ya i ni-MNO-ga ga-va-RYOO pa-ROOS-kee]</span>
+      <span class="ru-text">${item.answerRu}</span>
+      <span class="phonetic-text">${item.answerIpa}</span>
     </div>
     <div class="review-check">
-      <span class="review-status${finalRemembered === true ? " review-status--yes" : finalRemembered === false ? " review-status--no" : ""}">${finalStatusText}</span>
+      <span class="review-status${remembered === true ? " review-status--yes" : remembered === false ? " review-status--no" : ""}">${statusText}</span>
       <button class="answer-btn" data-review="yes" type="button">记住了</button>
       <button class="ghost-btn" data-review="no" type="button">还没记住</button>
     </div>
   `;
 
-  finalCard.querySelector('[data-review="yes"]').addEventListener("click", () => {
-    state.progress.reviewRemembered[finalRememberKey] = true;
+  card.querySelector('[data-review="yes"]').addEventListener("click", () => {
+    state.progress.reviewRemembered[rememberKey] = true;
     saveProgress();
     renderReviewPage();
   });
 
-  finalCard.querySelector('[data-review="no"]').addEventListener("click", () => {
-    state.progress.reviewRemembered[finalRememberKey] = false;
+  card.querySelector('[data-review="no"]').addEventListener("click", () => {
+    state.progress.reviewRemembered[rememberKey] = false;
     saveProgress();
     renderReviewPage();
   });
 
-  els.reviewList.appendChild(finalCard);
+  return card;
 }
 
 function renderFooter() {
@@ -623,15 +712,15 @@ function renderFooter() {
   els.footerNote.textContent =
     state.progress.page === "learn"
       ? lastDay
-        ? "这是全年最后一天的复盘；点回到第一天就重新开始全年循环。"
+        ? "全年最后一天；点回到第一天可重新开始。"
         : isCycleDay
-          ? "这是本轮第 12 天复盘；点下一天就会进入下一轮。"
-        : "底部按钮只切换整天内容；当天学习请点上面的 part1 / part2 / part3。"
+          ? "这是本轮复盘；点下一天进入下一轮。"
+        : "底部只切换整天；当天请点上面的 part1 / part2 / part3。"
       : lastDay
-        ? "全年复盘完后，回到第一天就重新开始全年循环。"
+        ? "全年复盘完成后，可回到第一天重新开始。"
         : isCycleDay
-          ? "本轮复习检查完成后，点下一天会进入下一轮。"
-          : "复习页里每项都要确认是否记住；不确认就默认未记住。";
+          ? "本轮复习完成后，点下一天进入下一轮。"
+          : "复习页里不确认就默认未记住。";
 }
 
 function handlePrev() {

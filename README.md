@@ -16,6 +16,8 @@
 - 已适配 iPhone 主屏幕 Web App 方向
 - 已内置全年 `24` 个 `12` 天周期，共 `288` 个学习日
 - 已部署到 GitHub Pages
+- 手机端当前采用单屏优先布局
+- `part1 / part2 / 复习检查` 已改成单卡片切换，减少长列表下滑
 
 ## GitHub Pages 发布
 项目已经准备好通过 GitHub Pages 发布：
