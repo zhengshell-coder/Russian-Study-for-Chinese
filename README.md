@@ -15,19 +15,25 @@
 - 已支持 PWA 基础能力
 - 已适配 iPhone 主屏幕 Web App 方向
 - 已内置全年 `24` 个 `12` 天周期，共 `288` 个学习日
+- 已部署到 GitHub Pages
 
 ## GitHub Pages 发布
 项目已经准备好通过 GitHub Pages 发布：
-- 工作流文件：`.github/workflows/deploy-pages.yml`
+- 当前仓库：`https://github.com/zhengshell-coder/Russian-Study-for-Chinese`
+- 当前站点：`https://zhengshell-coder.github.io/Russian-Study-for-Chinese/`
+- 工作流文件：`.github/workflows/static.yml`
 - 发布目录：`demo/`
 - Pages 会直接部署 `demo` 里的静态文件
+
+详细部署说明见：
+- `docs/github-pages-deployment-v1.md`
 
 ### 推荐发布步骤
 1. 创建一个新的 GitHub 仓库，例如 `russian-study-tool`
 2. 把本项目推送到该仓库的 `main` 分支
 3. 在 GitHub 仓库里打开 `Settings -> Pages`
 4. 确认 `Build and deployment` 使用 `GitHub Actions`
-5. 等待 `Deploy GitHub Pages` 工作流完成
+5. 等待 `Deploy static content to Pages` 工作流完成
 6. 打开生成的网址
 
 项目站点默认会是：

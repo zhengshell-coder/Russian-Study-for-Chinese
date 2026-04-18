@@ -13,9 +13,11 @@
 
 ## 2. 当前技术方案
 - 前端：`HTML + CSS + JavaScript`
-- 数据：本地 `JSON`
+- 数据：本地 `JavaScript` 课程模块
 - 进度：`localStorage`
 - 语音：浏览器 `speechSynthesis` + `SpeechRecognition/webkitSpeechRecognition`
+- PWA：`manifest.webmanifest` + `service-worker.js`
+- 部署：`GitHub Pages`
 
 ## 3. 系统分层
 
@@ -29,13 +31,14 @@
 负责：
 - 字母数据
 - 场景词汇与句型数据
-- 今日课程配置
+- 全年课程配置
 
 原则：
 - 内容数据与页面展示解耦
 - 字母展示必须以俄文字母为主，不用拉丁字母代替
 - 俄语文本字段必须只存标准西里尔字母
 - 转写与中文说明字段必须分离
+- 课程应支持 `24` 个 `12` 天周期的长期扩展
 
 ### 3.3 学习流程层
 负责：
@@ -57,59 +60,84 @@
 
 ```text
 russian-study-tool/
+  .github/
+    workflows/
+      static.yml
   docs/
     requirements-v1.md
     architecture-v1.md
     evaluation-rubric-v1.md
     iteration-review-current.md
+    yearly-curriculum-framework-v1.md
+    github-pages-deployment-v1.md
   demo/
+    .nojekyll
+    _headers
     index.html
+    manifest.webmanifest
+    service-worker.js
     assets/
       styles.css
       app.js
-    data/
-      curriculum.json
+      curriculum-year.js
+      icon.svg
+      icons/
+        apple-touch-icon-180.png
+        icon-192.png
+        icon-512.png
+        icon-maskable-512.png
 ```
 
-## 5. 数据结构建议
+## 5. 当前数据结构
 
-### 5.1 字母数据
-- `uppercase`
-- `lowercase`
-- `nameZh`
-- `translit`
-- `note`
-- `example.word`
-
-### 5.2 场景数据
+### 5.1 每日课程对象
+- `day`
+- `cycleNumber`
+- `cycleDay`
+- `cycleLabel`
 - `title`
-- `tag`
-- `words`
-- `phrase`
+- `stepNotes`
+- `foundation`
+- `scene`
+- `voice`
+- `review`
+- `cycleSections`（仅第 `12` 天复盘使用）
+
+### 5.2 foundation 项
+- `ru`
+- `ipa`
+- `zh`
+- `exampleRu`
+- `exampleIpa`
+- `exampleZh`
+
+### 5.3 scene / voice 项
+- `ru`
+- `ipa`
+- `zh`
 
 字段规则：
-- `word` / `phrase.ru` / `example.word` 只存俄文
-- `translit` 只存拉丁转写
-- `zh` / `nameZh` / `note` 只存中文说明
-
-### 5.3 今日课程数据
-- `title`
-- `summary`
-- `reviewCount`
-- `tasks`
+- `ru` / `exampleRu` 只存标准俄文
+- `ipa` 当前实际承担“简化发音标注”角色
+- `zh` / `exampleZh` 只存中文说明
 
 ## 6. 手机侧要求
 - 窄屏优先
 - 单舞台单步骤
 - 按钮大、路径短
 - 音频播放必须由用户触发
+- 适配 iPhone 顶部刘海与底部安全区
+- 支持 Safari “添加到主屏幕”
 
 ## 7. 当前已知限制
 - 语音播放质量受浏览器内置语音影响
 - 语音评分仍是基础文本近似比较
-- 当前没有离线缓存和 PWA 能力
+- 当前离线缓存仍是基础版
+- 语音反馈仍不等同于专业纠音
+- GitHub Pages 仅提供静态站点，不包含账号同步和云端存档
 
 ## 8. 下一阶段技术重点
 1. 更高质量的俄语音频样本方案
 2. 更细颗粒度的单题卡流
-3. PWA 和离线缓存准备
+3. 离线缓存增强与更新策略
+4. 可选的云端进度同步能力
