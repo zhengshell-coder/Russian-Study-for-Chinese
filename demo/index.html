@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>俄语学习工具 Demo</title>
+    <meta name="description" content="俄语学习工具 Demo" />
+    <meta name="theme-color" content="#58cc02" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="俄语学习" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon-180.png" />
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand__icon">Я</div>
+          <div>
+            <p class="brand__eyebrow">俄语学习</p>
+            <h1 id="unit-title">第 1 天 · 载入中</h1>
+          </div>
+        </div>
+        <div class="topbar__stats">
+          <div class="stat-pill">
+            <strong id="day-counter">1 / 12</strong>
+            <span>天数</span>
+          </div>
+          <div class="stat-pill">
+            <strong id="streak-value">0</strong>
+            <span>连学</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="progress-card">
+        <div class="progress-row">
+          <button class="day-badge" id="day-badge" type="button">1</button>
+          <div class="step-dots" id="step-dots"></div>
+          <div class="progress-meta">
+            <strong id="progress-label">学习页</strong>
+            <span id="progress-note">先学，再复习检查。</span>
+          </div>
+        </div>
+        <div class="page-switch">
+          <button class="page-tab is-active" id="tab-learn" type="button">学习</button>
+          <button class="page-tab" id="tab-review" type="button">复习检查</button>
+        </div>
+      </section>
+
+      <main class="main-card">
+        <section class="page-panel is-active" id="learn-panel">
+          <div class="page-head">
+            <p class="mini-label" id="learn-step-label">第 1 步</p>
+            <h2 id="learn-step-title">载入中...</h2>
+            <p class="page-note" id="learn-step-note"></p>
+          </div>
+          <section class="learn-stage" id="learn-stage"></section>
+        </section>
+
+        <section class="page-panel" id="review-panel">
+          <div class="page-head">
+            <p class="mini-label">复习检查</p>
+            <h2 id="review-title">载入中...</h2>
+            <p class="page-note" id="review-note"></p>
+          </div>
+          <section class="review-list" id="review-list"></section>
+        </section>
+      </main>
+
+      <footer class="footer-nav">
+        <button class="soft-btn" id="prev-btn" type="button">上一天</button>
+        <p class="footer-note" id="footer-note">底部按钮只切换整天内容；当天内容请点上面的圆圈和学习/复习。</p>
+        <button class="primary-btn" id="next-btn" type="button">下一天</button>
+      </footer>
+    </div>
+
+    <script src="./assets/app.js" type="module"></script>
+  </body>
+</html>

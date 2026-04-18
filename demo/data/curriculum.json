@@ -1,0 +1,87 @@
+{
+  "todayPlan": {
+    "title": "字母 + 场景 + 跟读",
+    "summary": "3 个字母 · 1 个场景 · 15 分钟",
+    "reviewCount": 4,
+    "tasks": [
+      {
+        "id": "task-alphabet",
+        "module": "alphabet",
+        "title": "字母",
+        "minutes": 5
+      },
+      {
+        "id": "task-scene",
+        "module": "scene",
+        "title": "场景",
+        "minutes": 5
+      },
+      {
+        "id": "task-voice",
+        "module": "voice",
+        "title": "跟读",
+        "minutes": 5
+      }
+    ]
+  },
+  "alphabet": [
+    {
+      "uppercase": "А",
+      "lowercase": "а",
+      "nameZh": "阿",
+      "translit": "a",
+      "note": "俄文字母 А а，不是拉丁字母 A 的替代写法。",
+      "example": {
+        "word": "Анна"
+      }
+    },
+    {
+      "uppercase": "О",
+      "lowercase": "о",
+      "nameZh": "奥",
+      "translit": "o",
+      "note": "俄文字母 О о，字形像拉丁 O，但发音和重读位置要单独学。",
+      "example": {
+        "word": "окно"
+      }
+    },
+    {
+      "uppercase": "Л",
+      "lowercase": "л",
+      "nameZh": "埃尔",
+      "translit": "l",
+      "note": "对应转写 l 的是俄文字母 Л л，不是拉丁字母 L。",
+      "example": {
+        "word": "лампа"
+      }
+    }
+  ],
+  "scenes": [
+    {
+      "title": "点饮料",
+      "tag": "今日句子",
+      "words": [
+        {
+          "word": "чай",
+          "translit": "chai",
+          "zh": "茶"
+        },
+        {
+          "word": "пожалуйста",
+          "translit": "pozhaluysta",
+          "zh": "请 / 谢谢"
+        }
+      ],
+      "phrase": {
+        "ru": "Я хочу чай, пожалуйста.",
+        "translit": "Ya khochu chai, pozhaluysta.",
+        "zh": "我想要一杯茶，谢谢。"
+      }
+    }
+  ],
+  "voicePractice": {
+    "targetText": "Я хочу чай, пожалуйста.",
+    "translit": "Ya khochu chai, pozhaluysta.",
+    "zh": "我想要一杯茶，谢谢。"
+  }
+}

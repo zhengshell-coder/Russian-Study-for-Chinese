@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="俄语学习工具图标">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7ae21d"/>
+      <stop offset="100%" stop-color="#43a300"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffef2"/>
+      <stop offset="100%" stop-color="#fff8d0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <circle cx="398" cy="110" r="44" fill="#ffd95a" opacity="0.95"/>
+  <rect x="88" y="118" width="336" height="276" rx="48" fill="url(#card)" stroke="#dfeec7" stroke-width="12"/>
+  <rect x="126" y="162" width="118" height="118" rx="26" fill="#58cc02"/>
+  <text x="185" y="239" text-anchor="middle" font-size="70" font-weight="800" fill="#ffffff" font-family="Arial, Helvetica, sans-serif">Я</text>
+  <circle cx="306" cy="210" r="34" fill="#eef9e2" stroke="#bfe89f" stroke-width="10"/>
+  <circle cx="372" cy="210" r="34" fill="#eef9e2" stroke="#bfe89f" stroke-width="10"/>
+  <circle cx="339" cy="274" r="34" fill="#eef9e2" stroke="#bfe89f" stroke-width="10"/>
+  <rect x="126" y="318" width="260" height="22" rx="11" fill="#d7ead1"/>
+  <rect x="126" y="356" width="192" height="22" rx="11" fill="#d7ead1"/>
+</svg>
