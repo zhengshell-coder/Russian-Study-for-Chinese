@@ -1,5 +1,11 @@
-const CACHE_NAME = "russian-study-tool-v2";
+const CACHE_NAME = "russian-study-tool-v3";
 const APP_SHELL_PATHS = new Set(["./", "./index.html", "/Russian-Study-for-Chinese/", "/Russian-Study-for-Chinese/index.html"]);
+const CORE_ASSET_PATHS = new Set([
+  "/Russian-Study-for-Chinese/assets/app.js",
+  "/Russian-Study-for-Chinese/assets/styles.css",
+  "/Russian-Study-for-Chinese/manifest.webmanifest",
+  "/Russian-Study-for-Chinese/assets/curriculum-year.js",
+]);
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -44,6 +50,12 @@ self.addEventListener("fetch", (event) => {
     event.request.mode === "navigate" ||
     APP_SHELL_PATHS.has(requestUrl.pathname) ||
     requestUrl.pathname.endsWith("/index.html");
+  const isCoreAssetRequest =
+    CORE_ASSET_PATHS.has(requestUrl.pathname) ||
+    requestUrl.pathname.endsWith("/assets/app.js") ||
+    requestUrl.pathname.endsWith("/assets/styles.css") ||
+    requestUrl.pathname.endsWith("/assets/curriculum-year.js") ||
+    requestUrl.pathname.endsWith("/manifest.webmanifest");
 
   if (isAppShellRequest) {
     event.respondWith(
@@ -57,6 +69,22 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
+    );
+    return;
+  }
+
+  if (isCoreAssetRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const cloned = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          }
+
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request)),
     );
     return;
   }
