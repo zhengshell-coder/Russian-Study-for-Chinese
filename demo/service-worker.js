@@ -1,4 +1,5 @@
-const CACHE_NAME = "russian-study-tool-v1";
+const CACHE_NAME = "russian-study-tool-v2";
+const APP_SHELL_PATHS = new Set(["./", "./index.html", "/Russian-Study-for-Chinese/", "/Russian-Study-for-Chinese/index.html"]);
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -35,6 +36,28 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const isAppShellRequest =
+    event.request.mode === "navigate" ||
+    APP_SHELL_PATHS.has(requestUrl.pathname) ||
+    requestUrl.pathname.endsWith("/index.html");
+
+  if (isAppShellRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const cloned = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", cloned));
+          }
+
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
+    );
     return;
   }
 
