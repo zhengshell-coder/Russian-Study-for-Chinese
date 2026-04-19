@@ -264,17 +264,15 @@ function createPager(items, index, onSelect, getLabel, renderCard) {
   wrapper.className = "focus-stack";
 
   if (items.length > 1) {
-    wrapper.appendChild(createChipRow(items, index, onSelect, getLabel));
-  }
+    const toolbar = document.createElement("div");
+    toolbar.className = "focus-toolbar";
 
-  const viewport = document.createElement("div");
-  viewport.className = "focus-viewport";
-  viewport.appendChild(renderCard(items[index], index));
-  wrapper.appendChild(viewport);
+    const status = document.createElement("span");
+    status.className = "focus-toolbar__status";
+    status.textContent = `当前 ${index + 1} / ${items.length}`;
 
-  if (items.length > 1) {
-    const nav = document.createElement("div");
-    nav.className = "focus-nav";
+    const actions = document.createElement("div");
+    actions.className = "focus-toolbar__actions";
 
     const prev = document.createElement("button");
     prev.type = "button";
@@ -283,10 +281,6 @@ function createPager(items, index, onSelect, getLabel, renderCard) {
     prev.disabled = index === 0;
     prev.addEventListener("click", () => onSelect(index - 1));
 
-    const status = document.createElement("span");
-    status.className = "focus-nav__status";
-    status.textContent = `${index + 1} / ${items.length}`;
-
     const next = document.createElement("button");
     next.type = "button";
     next.className = "primary-btn";
@@ -294,9 +288,19 @@ function createPager(items, index, onSelect, getLabel, renderCard) {
     next.disabled = index === items.length - 1;
     next.addEventListener("click", () => onSelect(index + 1));
 
-    nav.append(prev, status, next);
-    wrapper.appendChild(nav);
+    actions.append(prev, next);
+    toolbar.append(status, actions);
+    wrapper.appendChild(toolbar);
   }
+
+  if (items.length > 1) {
+    wrapper.appendChild(createChipRow(items, index, onSelect, getLabel));
+  }
+
+  const viewport = document.createElement("div");
+  viewport.className = "focus-viewport";
+  viewport.appendChild(renderCard(items[index], index));
+  wrapper.appendChild(viewport);
 
   return wrapper;
 }
