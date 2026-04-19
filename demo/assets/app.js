@@ -259,9 +259,10 @@ function createChipRow(items, index, onSelect, getLabel) {
   return row;
 }
 
-function createPager(items, index, onSelect, getLabel, renderCard) {
+function createPager(items, index, onSelect, getLabel, renderCard, options = {}) {
   const wrapper = document.createElement("section");
   wrapper.className = "focus-stack";
+  const { showNav = true } = options;
 
   if (items.length > 1) {
     wrapper.appendChild(createChipRow(items, index, onSelect, getLabel));
@@ -272,7 +273,7 @@ function createPager(items, index, onSelect, getLabel, renderCard) {
   viewport.appendChild(renderCard(items[index], index));
   wrapper.appendChild(viewport);
 
-  if (items.length > 1) {
+  if (showNav && items.length > 1) {
     const nav = document.createElement("div");
     nav.className = "focus-nav";
 
@@ -390,6 +391,7 @@ function renderFoundation(day) {
     (nextIndex) => setUiIndex("foundationIndex", key, nextIndex, day.foundation.length),
     (_, itemIndex) => `核心 ${itemIndex + 1}`,
     (item) => createFoundationCard(item),
+    { showNav: false },
   );
   els.learnStage.appendChild(pager);
 }
@@ -409,6 +411,7 @@ function renderScene(day) {
     (nextIndex) => setUiIndex("sceneIndex", key, nextIndex, items.length),
     (item) => item.label,
     (item) => createSceneCard(item),
+    { showNav: false },
   );
   els.learnStage.appendChild(pager);
 }
@@ -456,9 +459,10 @@ function renderCycleFoundation(day) {
           itemKey,
           nextIndex,
           section.foundation.length,
-        ),
+      ),
       (_, index) => `核心 ${index + 1}`,
       (item) => createFoundationCard(item),
+      { showNav: false },
     ),
   );
   els.learnStage.appendChild(wrapper);
@@ -509,6 +513,7 @@ function renderCycleScene(day) {
       (nextIndex) => setUiIndex("cycleSceneItem", itemKey, nextIndex, items.length),
       (item) => item.label,
       (item) => createSceneCard(item),
+      { showNav: false },
     ),
   );
   els.learnStage.appendChild(wrapper);
