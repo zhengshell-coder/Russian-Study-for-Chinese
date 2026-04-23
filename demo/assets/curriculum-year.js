@@ -75,6 +75,20 @@ function makeDayOneExercises() {
     },
     {
       id: "c1-d1-e2",
+      type: "listen_choose_words",
+      prompt: "听句子，选出你听到的词",
+      audioText: "Это Анна.",
+      ipa: "[E-ta AN-na]",
+      zh: "这是安娜。",
+      correctTokens: ["Это", "Анна"],
+      choices: ["Это", "Анна", "окно", "я", "утро"],
+      feedback: {
+        meaning: "Это Анна. = 这是安娜。",
+        explanation: "先完整听一句，再从候选词里抓出真正听到的词。",
+      },
+    },
+    {
+      id: "c1-d1-e3",
       type: "sentence_builder",
       prompt: "拼出这句话",
       answer: "Это Анна.",
@@ -87,7 +101,7 @@ function makeDayOneExercises() {
       },
     },
     {
-      id: "c1-d1-e3",
+      id: "c1-d1-e4",
       type: "listen_order",
       prompt: "按听到的顺序点词",
       answer: "Это Анна.",
@@ -100,7 +114,20 @@ function makeDayOneExercises() {
       },
     },
     {
-      id: "c1-d1-e4",
+      id: "c1-d1-e5",
+      type: "copy_or_type_ru",
+      prompt: "把这句俄语输入一遍",
+      answer: "Это Анна.",
+      ipa: "[E-ta AN-na]",
+      zh: "这是安娜。",
+      showAnswerBeforeTyping: true,
+      feedback: {
+        meaning: "Это Анна. = 这是安娜。",
+        explanation: "看着句子打一遍，有助于把字母和拼写真正记住。",
+      },
+    },
+    {
+      id: "c1-d1-e6",
       type: "sentence_builder",
       prompt: "拼出这个词",
       answer: "окно",
@@ -113,7 +140,7 @@ function makeDayOneExercises() {
       },
     },
     {
-      id: "c1-d1-e5",
+      id: "c1-d1-e7",
       type: "repeat_after",
       prompt: "跟读这个词",
       answer: "Анна",
@@ -126,7 +153,7 @@ function makeDayOneExercises() {
       },
     },
     {
-      id: "c1-d1-e6",
+      id: "c1-d1-e8",
       type: "repeat_after",
       prompt: "跟读整句",
       answer: "Это Анна.",

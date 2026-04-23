@@ -394,10 +394,54 @@ button:disabled {
 .exercise-audio-row,
 .token-bank,
 .answer-slots,
-.summary-list {
+.summary-list,
+.choice-bank {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.choice-option {
+  min-height: 52px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 2px solid #d7ead1;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.choice-option--selected {
+  background: #eef9e2;
+  border-color: #bfe89f;
+  color: var(--green-deep);
+}
+
+.copy-source {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 2px solid #d7ead1;
+  font-size: 1.18rem;
+  font-weight: 800;
+}
+
+.type-input {
+  width: 100%;
+  border: 2px solid #d7ead1;
+  border-radius: 16px;
+  padding: 14px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.type-input:focus {
+  outline: 3px solid rgba(88, 204, 2, 0.18);
+  border-color: var(--green);
 }
 
 .answer-slots {
@@ -904,8 +948,13 @@ button:disabled {
 
   .match-option,
   .token-option,
-  .answer-token {
+  .answer-token,
+  .choice-option {
     min-height: 52px;
+  }
+
+  .type-input {
+    min-height: 108px;
   }
 
   .focus-nav {

@@ -92,8 +92,10 @@ function createInitialLessonState(dayNumber = null) {
     isCorrect: false,
     completed: false,
     selectedTokens: [],
+    selectedChoices: [],
     selectedPair: null,
     matchedPairs: [],
+    textInput: "",
     spoken: false,
   };
 }
@@ -287,8 +289,10 @@ function resetLessonAttempt() {
   state.lesson.checked = false;
   state.lesson.isCorrect = false;
   state.lesson.selectedTokens = [];
+  state.lesson.selectedChoices = [];
   state.lesson.selectedPair = null;
   state.lesson.matchedPairs = [];
+  state.lesson.textInput = "";
   state.lesson.spoken = false;
 }
 
@@ -298,8 +302,18 @@ function renderExercise(exercise) {
     return;
   }
 
+  if (exercise.type === "listen_choose_words") {
+    renderListenChooseWordsExercise(exercise);
+    return;
+  }
+
   if (exercise.type === "sentence_builder" || exercise.type === "listen_order") {
     renderTokenExercise(exercise);
+    return;
+  }
+
+  if (exercise.type === "copy_or_type_ru") {
+    renderCopyOrTypeExercise(exercise);
     return;
   }
 
@@ -427,6 +441,80 @@ function renderTokenExercise(exercise) {
   els.learnStage.appendChild(card);
 }
 
+function renderListenChooseWordsExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  card.innerHTML = `
+    <div class="exercise-audio-row">
+      <button class="listen-btn" data-audio="slow" type="button">慢速</button>
+      <button class="listen-btn" data-audio="normal" type="button">正常</button>
+    </div>
+    <p class="exercise-prompt">听整句后，点出真正听到的词。</p>
+    <div class="choice-bank"></div>
+    <p class="exercise-meaning">${exercise.zh}</p>
+    <p class="phonetic-text">${exercise.ipa}</p>
+  `;
+
+  card.querySelectorAll("[data-audio]").forEach((button) => {
+    button.addEventListener("click", () => {
+      speakText(exercise.audioText, button.dataset.audio === "slow" ? 0.68 : 0.92);
+    });
+  });
+
+  const bank = card.querySelector(".choice-bank");
+  exercise.choices.forEach((choice) => {
+    const button = document.createElement("button");
+    const selected = state.lesson.selectedChoices.includes(choice);
+    button.type = "button";
+    button.className = `choice-option ru-text${selected ? " choice-option--selected" : ""}`;
+    button.textContent = choice;
+    button.addEventListener("click", () => {
+      toggleChoice(choice);
+    });
+    bank.appendChild(button);
+  });
+
+  appendFeedback(card, exercise);
+  els.learnStage.appendChild(card);
+}
+
+function toggleChoice(choice) {
+  if (state.lesson.checked && state.lesson.isCorrect) {
+    return;
+  }
+
+  if (state.lesson.selectedChoices.includes(choice)) {
+    state.lesson.selectedChoices = state.lesson.selectedChoices.filter((item) => item !== choice);
+  } else {
+    state.lesson.selectedChoices = [...state.lesson.selectedChoices, choice];
+  }
+
+  state.lesson.checked = false;
+  render();
+}
+
+function renderCopyOrTypeExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  card.innerHTML = `
+    ${exercise.showAnswerBeforeTyping ? `<p class="copy-source ru-text">${exercise.answer}</p>` : ""}
+    <p class="exercise-prompt">看着上面的俄语，完整输入一遍。</p>
+    <textarea class="type-input" rows="4" placeholder="在这里输入俄语"></textarea>
+    <p class="exercise-meaning">${exercise.zh}</p>
+    <p class="phonetic-text">${exercise.ipa}</p>
+  `;
+
+  const input = card.querySelector(".type-input");
+  input.value = state.lesson.textInput;
+  input.addEventListener("input", () => {
+    state.lesson.textInput = input.value;
+    state.lesson.checked = false;
+  });
+
+  appendFeedback(card, exercise);
+  els.learnStage.appendChild(card);
+}
+
 function renderRepeatExercise(exercise) {
   const card = document.createElement("article");
   card.className = "exercise-card";
@@ -492,8 +580,16 @@ function evaluateExercise(exercise) {
     return state.lesson.matchedPairs.length === exercise.pairs.length;
   }
 
+  if (exercise.type === "listen_choose_words") {
+    return compareChoiceSets(state.lesson.selectedChoices, exercise.correctTokens);
+  }
+
   if (exercise.type === "sentence_builder" || exercise.type === "listen_order") {
     return normalizeAnswer(state.lesson.selectedTokens.join(" ")) === normalizeAnswer(exercise.answer);
+  }
+
+  if (exercise.type === "copy_or_type_ru") {
+    return normalizeAnswer(state.lesson.textInput) === normalizeAnswer(exercise.answer);
   }
 
   if (exercise.type === "repeat_after") {
@@ -509,6 +605,13 @@ function normalizeAnswer(value) {
     .replace(/[.,!?]/g, "")
     .replace(/\s+/g, "")
     .trim();
+}
+
+function compareChoiceSets(actual, expected) {
+  const actualSorted = [...actual].map(normalizeAnswer).sort();
+  const expectedSorted = [...expected].map(normalizeAnswer).sort();
+
+  return JSON.stringify(actualSorted) === JSON.stringify(expectedSorted);
 }
 
 function renderLessonSummary(day) {
