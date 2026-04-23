@@ -7,6 +7,7 @@
 - `docs/requirements-v1.md`：需求文档
 - `docs/architecture-v1.md`：技术架构
 - `docs/yearly-curriculum-framework-v1.md`：全年学习框架
+- `docs/duolingo-adaptation-plan-v1.md`：多邻国式题型引擎适配方案
 - `docs/evaluation-rubric-v1.md`：评估标准
 - `docs/change-record-2026-04-18-russian-rules.md`：俄语内容修正记录
 
@@ -18,6 +19,7 @@
 - 已部署到 GitHub Pages
 - 手机端当前采用单屏优先布局
 - `part1 / part2 / 复习检查` 已改成单卡片切换，减少长列表下滑
+- 下一阶段规划为题型引擎：匹配、句子拼装、听音排序、即时反馈
 
 ## GitHub Pages 发布
 项目已经准备好通过 GitHub Pages 发布：
