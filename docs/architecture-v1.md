@@ -46,7 +46,25 @@
 - 课程完成状态
 - 今日任务进度
 
-### 3.4 语音能力层
+兼容规则：
+- 外层仍以 `part1 / part2 / part3 / 复习检查` 组织
+- 新题型引擎只替换 part 内部内容
+- 没有 `exercises` 的课程继续使用旧渲染
+
+### 3.4 题型引擎层
+负责：
+- 读取 `exercises`
+- 渲染匹配、拼句、听音排序等题型
+- 管理当前题进度
+- 提供即时反馈
+- 将错题记录到本地状态
+
+第一阶段只实现：
+- `match_pairs`
+- 第 `1` 天 `part1`
+- 旧内容 fallback
+
+### 3.5 语音能力层
 负责：
 - 字母、单词、句子播放
 - 跟读识别
@@ -115,6 +133,19 @@ russian-study-tool/
 - `ru`
 - `ipa`
 - `zh`
+
+### 5.4 exercises 项
+- `id`
+- `part`
+- `type`
+- `prompt`
+- `payload`
+- `answer`
+- `feedback`
+
+兼容策略：
+- 若当前 day 的当前 part 存在 `exercises`，使用题型引擎
+- 若不存在，继续使用 `foundation / scene / voice / review`
 
 字段规则：
 - `ru` / `exampleRu` 只存标准俄文
