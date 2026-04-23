@@ -7,7 +7,7 @@
 
 ## 1. 架构目标
 - 第一阶段以纯静态前端快速落地
-- 支撑字母、场景、语音三类学习模块
+- 支撑 Lesson 题流、场景、语音三类学习能力
 - 支撑手机浏览器单题推进体验
 - 为未来更高质量语音能力预留演进空间
 
@@ -42,14 +42,16 @@
 
 ### 3.3 学习流程层
 负责：
-- 当前步骤切换
-- 课程完成状态
+- 当前 Lesson
+- 当前 Exercise
+- 题目检查与继续
+- Lesson 完成状态
 - 今日任务进度
 
-兼容规则：
-- 外层仍以 `part1 / part2 / part3 / 复习检查` 组织
-- 新题型引擎只替换 part 内部内容
-- 没有 `exercises` 的课程继续使用旧渲染
+重设计规则：
+- 外层从 `part1 / part2 / part3 / 复习检查` 改为每日 `Lesson`
+- 每个 Lesson 由 `8-12` 个 `Exercise` 组成
+- 第 `12` 天仍为整轮复盘，但内部同样使用题流
 
 ### 3.4 题型引擎层
 负责：
@@ -61,8 +63,9 @@
 
 第一阶段只实现：
 - `match_pairs`
-- 第 `1` 天 `part1`
-- 旧内容 fallback
+- 第 `1` 天完整 Lesson 样板
+- 基础即时反馈
+- Lesson 进度条
 
 ### 3.5 语音能力层
 负责：
@@ -114,6 +117,11 @@ russian-study-tool/
 - `cycleDay`
 - `cycleLabel`
 - `title`
+- `theme`
+- `exercises`
+- `summary`
+
+短期兼容旧字段：
 - `stepNotes`
 - `foundation`
 - `scene`
@@ -136,16 +144,17 @@ russian-study-tool/
 
 ### 5.4 exercises 项
 - `id`
-- `part`
 - `type`
 - `prompt`
+- `audio`
 - `payload`
 - `answer`
 - `feedback`
 
-兼容策略：
-- 若当前 day 的当前 part 存在 `exercises`，使用题型引擎
-- 若不存在，继续使用 `foundation / scene / voice / review`
+迁移策略：
+- 新页面优先读取 `exercises`
+- 缺少 `exercises` 的日期可临时用旧字段生成基础题
+- 最终所有 `288` 天都迁移为 `exercises`
 
 字段规则：
 - `ru` / `exampleRu` 只存标准俄文
@@ -168,8 +177,8 @@ russian-study-tool/
 - GitHub Pages 仅提供静态站点，不包含账号同步和云端存档
 
 ## 8. 下一阶段技术重点
-1. 建立 `Exercise Engine`，支持匹配、拼句、听音排序和即时反馈
-2. 将 `part1 / part2 / part3` 从内容展示逐步迁移为题型练习
+1. 建立 `Lesson Engine`，支持每日题流、进度条和总结页
+2. 建立 `Exercise Engine`，支持匹配、拼句、听音排序和即时反馈
 3. 更高质量的俄语音频样本方案
 4. 离线缓存增强与更新策略
 5. 可选的云端进度同步能力
