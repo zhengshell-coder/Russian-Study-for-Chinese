@@ -1,4 +1,4 @@
-const CACHE_NAME = "russian-study-tool-v3";
+const CACHE_NAME = "russian-study-tool-v4";
 const APP_SHELL_PATHS = new Set(["./", "./index.html", "/Russian-Study-for-Chinese/", "/Russian-Study-for-Chinese/index.html"]);
 const CORE_ASSET_PATHS = new Set([
   "/Russian-Study-for-Chinese/assets/app.js",

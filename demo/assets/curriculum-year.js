@@ -57,6 +57,90 @@ function makeReview(label, prompt, answerRu, answerIpa) {
   return { label, prompt, answerRu, answerIpa };
 }
 
+function makeDayOneExercises() {
+  return [
+    {
+      id: "c1-d1-e1",
+      type: "match_pairs",
+      prompt: "匹配俄语和中文",
+      pairs: [
+        { ru: "А а", ipa: "[a]", zh: "字母 a" },
+        { ru: "О о", ipa: "[o]", zh: "字母 o" },
+        { ru: "Анна", ipa: "[AN-na]", zh: "安娜" },
+      ],
+      feedback: {
+        meaning: "А / О 是今天的核心字母，Анна 是例词。",
+        explanation: "先建立俄语字形和中文含义的连接。",
+      },
+    },
+    {
+      id: "c1-d1-e2",
+      type: "sentence_builder",
+      prompt: "拼出这句话",
+      answer: "Это Анна.",
+      ipa: "[E-ta AN-na]",
+      zh: "这是安娜。",
+      tokens: ["Анна", "Это"],
+      feedback: {
+        meaning: "Это Анна. = 这是安娜。",
+        explanation: "Это 是“这是”，Анна 是人名。",
+      },
+    },
+    {
+      id: "c1-d1-e3",
+      type: "listen_order",
+      prompt: "按听到的顺序点词",
+      answer: "Это Анна.",
+      ipa: "[E-ta AN-na]",
+      zh: "这是安娜。",
+      tokens: ["Анна", "Это"],
+      feedback: {
+        meaning: "先听 Это，再听 Анна。",
+        explanation: "听音排序比完整听写更适合刚入门阶段。",
+      },
+    },
+    {
+      id: "c1-d1-e4",
+      type: "sentence_builder",
+      prompt: "拼出这个词",
+      answer: "окно",
+      ipa: "[ak-NO]",
+      zh: "窗户",
+      tokens: ["но", "ок"],
+      feedback: {
+        meaning: "окно = 窗户。",
+        explanation: "今天用 окно 继续熟悉 О о 的读音。",
+      },
+    },
+    {
+      id: "c1-d1-e5",
+      type: "repeat_after",
+      prompt: "跟读这个词",
+      answer: "Анна",
+      ipa: "[AN-na]",
+      zh: "安娜",
+      mode: "word",
+      feedback: {
+        meaning: "Анна 是俄语人名。",
+        explanation: "先把单词读稳，再进入整句跟读。",
+      },
+    },
+    {
+      id: "c1-d1-e6",
+      type: "repeat_after",
+      prompt: "跟读整句",
+      answer: "Это Анна.",
+      ipa: "[E-ta AN-na]",
+      zh: "这是安娜。",
+      mode: "phrase",
+      feedback: {
+        meaning: "Это Анна. = 这是安娜。",
+        explanation: "今天的目标是认识 А / О，并能听读一个最小句。",
+      },
+    },
+  ];
+}
+
 function buildLessonDay(cycleDef, cycleDay, lessonDef) {
   const globalDay = (cycleDef.number - 1) * 12 + cycleDay;
   const leadPhrase = lessonDef.phrases[0];
@@ -90,12 +174,13 @@ function buildLessonDay(cycleDef, cycleDay, lessonDef) {
     ),
   ];
 
-  return {
+  const day = {
     day: globalDay,
     cycleNumber: cycleDef.number,
     cycleDay,
     cycleLabel: cycleDef.label,
     title: `${cycleDef.label} · ${lessonDef.title}`,
+    theme: lessonDef.title,
     stepNotes: lessonDef.stepNotes,
     foundation,
     scene: lessonDef.phrases.length > 1
@@ -104,6 +189,13 @@ function buildLessonDay(cycleDef, cycleDay, lessonDef) {
     voice: lessonDef.voice ?? leadPhrase,
     review,
   };
+
+  if (globalDay === 1) {
+    day.theme = "认识 А / О，并听懂一个最小句";
+    day.exercises = makeDayOneExercises();
+  }
+
+  return day;
 }
 
 function buildCycleReviewDay(cycleDef, cycleDays) {

@@ -10,6 +10,7 @@ const learnSteps = [
 
 const state = {
   progress: loadProgress(),
+  lesson: createInitialLessonState(),
   ui: {
     foundationIndex: {},
     sceneIndex: {},
@@ -28,6 +29,7 @@ const state = {
 };
 
 const els = {
+  appShell: document.querySelector(".app-shell"),
   cycleTitle: document.querySelector("#cycle-title"),
   unitTitle: document.querySelector("#unit-title"),
   dayBadge: document.querySelector("#day-badge"),
@@ -79,6 +81,20 @@ function createInitialVoiceResult() {
     feedback: "先听慢速，再跟读",
     status: "准备中",
     wordHits: [],
+  };
+}
+
+function createInitialLessonState(dayNumber = null) {
+  return {
+    day: dayNumber,
+    exerciseIndex: 0,
+    checked: false,
+    isCorrect: false,
+    completed: false,
+    selectedTokens: [],
+    selectedPair: null,
+    matchedPairs: [],
+    spoken: false,
   };
 }
 
@@ -139,10 +155,26 @@ function bindEvents() {
   });
 
   els.prevBtn.addEventListener("click", handlePrev);
-  els.nextBtn.addEventListener("click", handleNext);
+  els.nextBtn.addEventListener("click", () => {
+    if (hasLessonEngine(getCurrentDay())) {
+      handleLessonPrimary();
+      return;
+    }
+
+    handleNext();
+  });
 }
 
 function render() {
+  const day = getCurrentDay();
+
+  if (hasLessonEngine(day)) {
+    ensureLessonState(day);
+    renderLessonMode(day);
+    return;
+  }
+
+  els.appShell.classList.remove("is-lesson-mode");
   ensureVoiceSelectionForCurrentDay();
   ensureVoiceResultForCurrentDay();
   renderHeader();
@@ -151,6 +183,348 @@ function render() {
   renderLearnPage();
   renderReviewPage();
   renderFooter();
+}
+
+function hasLessonEngine(day) {
+  return Array.isArray(day.exercises) && day.exercises.length > 0;
+}
+
+function ensureLessonState(day) {
+  if (state.lesson.day === day.day) {
+    return;
+  }
+
+  state.lesson = createInitialLessonState(day.day);
+}
+
+function getCurrentExercise(day) {
+  return day.exercises[state.lesson.exerciseIndex];
+}
+
+function renderLessonMode(day) {
+  const exercise = getCurrentExercise(day);
+  const total = day.exercises.length;
+  const current = state.lesson.exerciseIndex + 1;
+
+  els.appShell.classList.add("is-lesson-mode");
+  els.cycleTitle.textContent = `周期 ${day.cycleNumber} · 第 ${day.cycleDay} 天`;
+  els.unitTitle.textContent = day.theme ?? day.title.replace(`${day.cycleLabel} · `, "");
+  els.dayBadge.textContent = String(day.cycleDay);
+  els.stepDots.innerHTML = `<div class="lesson-progress"><span style="width: ${state.lesson.completed ? 100 : (current - 1) / total * 100}%"></span></div>`;
+  els.progressLabel.textContent = state.lesson.completed ? "今日完成" : `题 ${current} / ${total}`;
+  els.progressNote.textContent = state.lesson.completed
+    ? "今天的 Lesson 已完成。"
+    : exercise.prompt;
+  els.tabLearn.classList.add("is-active");
+  els.tabReview.classList.remove("is-active");
+  els.learnPanel.classList.add("is-active");
+  els.reviewPanel.classList.remove("is-active");
+  els.learnStepLabel.textContent = state.lesson.completed ? "Lesson Summary" : exercise.type;
+  els.learnStepTitle.textContent = state.lesson.completed ? "今日总结" : exercise.prompt;
+  els.learnStepNote.textContent = state.lesson.completed
+    ? "可以进入下一天，也可以之后再回来复习。"
+    : day.theme ?? "";
+  els.learnStage.innerHTML = "";
+
+  if (state.lesson.completed) {
+    renderLessonSummary(day);
+  } else {
+    renderExercise(exercise);
+  }
+
+  renderLessonFooter(day);
+}
+
+function renderLessonFooter(day) {
+  els.prevBtn.style.display = "none";
+  els.footerNote.textContent = state.lesson.completed
+    ? "Lesson 完成。继续下一天，或之后再回来复习。"
+    : state.lesson.checked
+      ? state.lesson.isCorrect
+        ? "答对了，继续下一题。"
+        : "可以修改后再检查。"
+      : "完成当前题后点击检查。";
+  els.nextBtn.textContent = state.lesson.completed
+    ? "进入下一天"
+    : state.lesson.checked && state.lesson.isCorrect
+      ? "继续"
+      : "检查";
+}
+
+function handleLessonPrimary() {
+  const day = getCurrentDay();
+
+  if (state.lesson.completed) {
+    handleNext();
+    return;
+  }
+
+  const exercise = getCurrentExercise(day);
+
+  if (state.lesson.checked && state.lesson.isCorrect) {
+    advanceLesson(day);
+    return;
+  }
+
+  const result = evaluateExercise(exercise);
+  state.lesson.checked = true;
+  state.lesson.isCorrect = result;
+  render();
+}
+
+function advanceLesson(day) {
+  if (state.lesson.exerciseIndex >= day.exercises.length - 1) {
+    state.lesson.completed = true;
+  } else {
+    state.lesson.exerciseIndex += 1;
+    resetLessonAttempt();
+  }
+
+  render();
+}
+
+function resetLessonAttempt() {
+  state.lesson.checked = false;
+  state.lesson.isCorrect = false;
+  state.lesson.selectedTokens = [];
+  state.lesson.selectedPair = null;
+  state.lesson.matchedPairs = [];
+  state.lesson.spoken = false;
+}
+
+function renderExercise(exercise) {
+  if (exercise.type === "match_pairs") {
+    renderMatchPairsExercise(exercise);
+    return;
+  }
+
+  if (exercise.type === "sentence_builder" || exercise.type === "listen_order") {
+    renderTokenExercise(exercise);
+    return;
+  }
+
+  if (exercise.type === "repeat_after") {
+    renderRepeatExercise(exercise);
+    return;
+  }
+
+  renderUnsupportedExercise(exercise);
+}
+
+function renderMatchPairsExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  const ruOptions = exercise.pairs.map((pair, index) => ({ ...pair, side: "ru", key: `ru-${index}` }));
+  const zhOptions = [...exercise.pairs]
+    .reverse()
+    .map((pair, index) => ({ ...pair, side: "zh", key: `zh-${index}` }));
+  card.innerHTML = `
+    <p class="exercise-prompt">点一个俄语，再点对应中文。</p>
+    <div class="match-board">
+      <div class="match-column" data-side="ru"></div>
+      <div class="match-column" data-side="zh"></div>
+    </div>
+  `;
+
+  const ruColumn = card.querySelector('[data-side="ru"]');
+  const zhColumn = card.querySelector('[data-side="zh"]');
+  ruOptions.forEach((option) => ruColumn.appendChild(createMatchButton(option)));
+  zhOptions.forEach((option) => zhColumn.appendChild(createMatchButton(option)));
+  appendFeedback(card, exercise);
+  els.learnStage.appendChild(card);
+}
+
+function createMatchButton(option) {
+  const button = document.createElement("button");
+  const isMatched = state.lesson.matchedPairs.includes(option.ru);
+  const isSelected =
+    state.lesson.selectedPair &&
+    state.lesson.selectedPair.side === option.side &&
+    state.lesson.selectedPair.ru === option.ru;
+  button.type = "button";
+  button.className = `match-option${isMatched ? " match-option--matched" : ""}${isSelected ? " match-option--selected" : ""}`;
+  button.disabled = isMatched;
+  button.innerHTML =
+    option.side === "ru"
+      ? `<strong class="ru-text">${option.ru}</strong><span class="phonetic-text">${option.ipa}</span>`
+      : `<strong>${option.zh}</strong>`;
+  button.addEventListener("click", () => handleMatchSelect(option));
+  return button;
+}
+
+function handleMatchSelect(option) {
+  if (state.lesson.checked && state.lesson.isCorrect) {
+    return;
+  }
+
+  const selected = state.lesson.selectedPair;
+
+  if (!selected || selected.side === option.side) {
+    state.lesson.selectedPair = option;
+    state.lesson.checked = false;
+    render();
+    return;
+  }
+
+  if (selected.ru === option.ru) {
+    state.lesson.matchedPairs = [...new Set([...state.lesson.matchedPairs, option.ru])];
+  }
+
+  state.lesson.selectedPair = null;
+  state.lesson.checked = false;
+  render();
+}
+
+function renderTokenExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  const isListening = exercise.type === "listen_order";
+  card.innerHTML = `
+    <div class="exercise-audio-row">
+      ${isListening ? '<button class="listen-btn" data-audio="slow" type="button">慢速</button>' : ""}
+      <button class="listen-btn" data-audio="normal" type="button">${isListening ? "正常" : "听"}</button>
+    </div>
+    <div class="answer-slots">${state.lesson.selectedTokens.map((token) => `<button class="answer-token ru-text" type="button">${token}</button>`).join("") || '<span class="slot-placeholder">点下面词块组成答案</span>'}</div>
+    <div class="token-bank"></div>
+    <p class="exercise-meaning">${exercise.zh}</p>
+    <p class="phonetic-text">${exercise.ipa}</p>
+  `;
+
+  card.querySelectorAll("[data-audio]").forEach((button) => {
+    button.addEventListener("click", () => {
+      speakText(exercise.answer, button.dataset.audio === "slow" ? 0.68 : 0.92);
+    });
+  });
+
+  card.querySelector(".answer-slots").addEventListener("click", (event) => {
+    if (!event.target.classList.contains("answer-token")) {
+      return;
+    }
+
+    state.lesson.selectedTokens = state.lesson.selectedTokens.slice(0, -1);
+    state.lesson.checked = false;
+    render();
+  });
+
+  const bank = card.querySelector(".token-bank");
+  exercise.tokens.forEach((token) => {
+    const usedCount = state.lesson.selectedTokens.filter((item) => item === token).length;
+    const availableCount = exercise.tokens.filter((item) => item === token).length;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "token-option ru-text";
+    button.textContent = token;
+    button.disabled = usedCount >= availableCount;
+    button.addEventListener("click", () => {
+      state.lesson.selectedTokens.push(token);
+      state.lesson.checked = false;
+      render();
+    });
+    bank.appendChild(button);
+  });
+
+  appendFeedback(card, exercise);
+  els.learnStage.appendChild(card);
+}
+
+function renderRepeatExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  card.innerHTML = `
+    <p class="voice-target ru-text">${exercise.answer}</p>
+    <p class="voice-hint"><span class="phonetic-text">${exercise.ipa}</span> · ${exercise.zh}</p>
+    <div class="stage-actions">
+      <button class="primary-btn" data-audio="slow" type="button">慢速</button>
+      <button class="soft-btn" data-audio="normal" type="button">正常</button>
+      <button class="listen-btn" data-repeat="start" type="button">开始跟读</button>
+      <button class="ghost-btn" data-repeat="skip" type="button">现在不方便说</button>
+    </div>
+  `;
+
+  card.querySelector('[data-audio="slow"]').addEventListener("click", () => {
+    speakText(exercise.answer, 0.68);
+  });
+  card.querySelector('[data-audio="normal"]').addEventListener("click", () => {
+    speakText(exercise.answer, 0.92);
+  });
+  card.querySelector('[data-repeat="start"]').addEventListener("click", () => {
+    state.lesson.spoken = true;
+    state.lesson.checked = true;
+    state.lesson.isCorrect = true;
+    startRecognition(exercise.answer);
+    render();
+  });
+  card.querySelector('[data-repeat="skip"]').addEventListener("click", () => {
+    state.lesson.spoken = true;
+    state.lesson.checked = true;
+    state.lesson.isCorrect = true;
+    render();
+  });
+
+  appendFeedback(card, exercise);
+  els.learnStage.appendChild(card);
+}
+
+function renderUnsupportedExercise(exercise) {
+  const card = document.createElement("article");
+  card.className = "exercise-card";
+  card.innerHTML = `<p>暂不支持题型：${exercise.type}</p>`;
+  els.learnStage.appendChild(card);
+}
+
+function appendFeedback(card, exercise) {
+  if (!state.lesson.checked) {
+    return;
+  }
+
+  const feedback = document.createElement("div");
+  feedback.className = `lesson-feedback${state.lesson.isCorrect ? " lesson-feedback--ok" : " lesson-feedback--retry"}`;
+  feedback.innerHTML = `
+    <strong>${state.lesson.isCorrect ? "正确" : "再试一次"}</strong>
+    <span>Meaning: ${exercise.feedback?.meaning ?? exercise.zh ?? ""}</span>
+    <small>${exercise.feedback?.explanation ?? ""}</small>
+  `;
+  card.appendChild(feedback);
+}
+
+function evaluateExercise(exercise) {
+  if (exercise.type === "match_pairs") {
+    return state.lesson.matchedPairs.length === exercise.pairs.length;
+  }
+
+  if (exercise.type === "sentence_builder" || exercise.type === "listen_order") {
+    return normalizeAnswer(state.lesson.selectedTokens.join(" ")) === normalizeAnswer(exercise.answer);
+  }
+
+  if (exercise.type === "repeat_after") {
+    return state.lesson.spoken;
+  }
+
+  return false;
+}
+
+function normalizeAnswer(value) {
+  return value
+    .toLowerCase()
+    .replace(/[.,!?]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+function renderLessonSummary(day) {
+  const card = document.createElement("article");
+  card.className = "exercise-card lesson-summary";
+  card.innerHTML = `
+    <span class="focus-card__label">今日完成</span>
+    <strong>${day.theme ?? day.title}</strong>
+    <p>完成 ${day.exercises.length} 道题。今天的重点是：</p>
+    <div class="summary-list">
+      <span>认识 А / О</span>
+      <span>听懂 Это Анна.</span>
+      <span>完成单词和整句跟读</span>
+    </div>
+  `;
+  els.learnStage.appendChild(card);
 }
 
 function renderHeader() {
@@ -712,6 +1086,7 @@ function renderFooter() {
   const lastDay = state.progress.dayIndex === days.length - 1;
   const day = getCurrentDay();
   const isCycleDay = day.cycleDay === 12;
+  els.prevBtn.style.display = "";
   els.prevBtn.disabled = state.progress.dayIndex === 0;
   els.nextBtn.textContent = lastDay ? "回到第一天" : "下一天";
   els.footerNote.textContent =
@@ -738,6 +1113,7 @@ function handlePrev() {
   state.progress.learnStepIndex = 0;
   resetVoiceSelection();
   resetVoiceFeedback();
+  state.lesson = createInitialLessonState();
   saveProgress();
   render();
 }
@@ -751,6 +1127,7 @@ function handleNext() {
 
   state.progress.page = "learn";
   state.progress.learnStepIndex = 0;
+  state.lesson = createInitialLessonState();
   resetVoiceSelection();
   resetVoiceFeedback();
   saveProgress();
