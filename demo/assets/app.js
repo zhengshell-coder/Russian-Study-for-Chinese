@@ -221,7 +221,7 @@ function renderLessonMode(day) {
   els.tabReview.classList.remove("is-active");
   els.learnPanel.classList.add("is-active");
   els.reviewPanel.classList.remove("is-active");
-  els.learnStepLabel.textContent = state.lesson.completed ? "Lesson Summary" : exercise.type;
+  els.learnStepLabel.textContent = state.lesson.completed ? "完成" : getExerciseLabel(exercise.type);
   els.learnStepTitle.textContent = state.lesson.completed ? "今日总结" : exercise.prompt;
   els.learnStepNote.textContent = state.lesson.completed
     ? "可以进入下一天，也可以之后再回来复习。"
@@ -235,6 +235,19 @@ function renderLessonMode(day) {
   }
 
   renderLessonFooter(day);
+}
+
+function getExerciseLabel(type) {
+  const labels = {
+    match_pairs: "匹配",
+    listen_choose_words: "听辨",
+    listen_order: "排序",
+    sentence_builder: "拼句",
+    copy_or_type_ru: "输入",
+    repeat_after: "跟读",
+  };
+
+  return labels[type] ?? "练习";
 }
 
 function renderLessonFooter(day) {
@@ -329,26 +342,26 @@ function renderMatchPairsExercise(exercise) {
   const card = document.createElement("article");
   card.className = "exercise-card";
   const ruOptions = exercise.pairs.map((pair, index) => ({ ...pair, side: "ru", key: `ru-${index}` }));
-  const zhOptions = [...exercise.pairs]
+  const targetOptions = [...exercise.pairs]
     .reverse()
-    .map((pair, index) => ({ ...pair, side: "zh", key: `zh-${index}` }));
+    .map((pair, index) => ({ ...pair, side: "target", key: `target-${index}` }));
   card.innerHTML = `
-    <p class="exercise-prompt">点一个俄语，再点对应中文。</p>
+    <p class="exercise-prompt">点一个俄语，再点对应含义。</p>
     <div class="match-board">
       <div class="match-column" data-side="ru"></div>
-      <div class="match-column" data-side="zh"></div>
+      <div class="match-column" data-side="target"></div>
     </div>
   `;
 
   const ruColumn = card.querySelector('[data-side="ru"]');
-  const zhColumn = card.querySelector('[data-side="zh"]');
+  const targetColumn = card.querySelector('[data-side="target"]');
   ruOptions.forEach((option) => ruColumn.appendChild(createMatchButton(option)));
-  zhOptions.forEach((option) => zhColumn.appendChild(createMatchButton(option)));
+  targetOptions.forEach((option) => targetColumn.appendChild(createMatchButton(option, exercise)));
   appendFeedback(card, exercise);
   els.learnStage.appendChild(card);
 }
 
-function createMatchButton(option) {
+function createMatchButton(option, exercise = null) {
   const button = document.createElement("button");
   const isMatched = state.lesson.matchedPairs.includes(option.ru);
   const isSelected =
@@ -361,9 +374,21 @@ function createMatchButton(option) {
   button.innerHTML =
     option.side === "ru"
       ? `<strong class="ru-text">${option.ru}</strong><span class="phonetic-text">${option.ipa}</span>`
-      : `<strong>${option.zh}</strong>`;
+      : getMatchTargetLabel(option, exercise);
   button.addEventListener("click", () => handleMatchSelect(option));
   return button;
+}
+
+function getMatchTargetLabel(option, exercise) {
+  if (exercise?.targetLanguage === "en") {
+    return `<strong>${option.en ?? option.zh}</strong>`;
+  }
+
+  if (exercise?.targetLanguage === "mixed" && option.en) {
+    return `<strong>${option.zh}</strong><span>${option.en}</span>`;
+  }
+
+  return `<strong>${option.zh}</strong>`;
 }
 
 function handleMatchSelect(option) {
@@ -406,7 +431,12 @@ function renderTokenExercise(exercise) {
 
   card.querySelectorAll("[data-audio]").forEach((button) => {
     button.addEventListener("click", () => {
-      speakText(exercise.answer, button.dataset.audio === "slow" ? 0.68 : 0.92);
+      if (button.dataset.audio === "slow") {
+        speakTextWordByWord(exercise.answer, 0.68);
+        return;
+      }
+
+      speakText(exercise.answer, 0.92);
     });
   });
 
@@ -457,7 +487,12 @@ function renderListenChooseWordsExercise(exercise) {
 
   card.querySelectorAll("[data-audio]").forEach((button) => {
     button.addEventListener("click", () => {
-      speakText(exercise.audioText, button.dataset.audio === "slow" ? 0.68 : 0.92);
+      if (button.dataset.audio === "slow") {
+        speakTextWordByWord(exercise.audioText, 0.68);
+        return;
+      }
+
+      speakText(exercise.audioText, 0.92);
     });
   });
 
@@ -522,7 +557,7 @@ function renderRepeatExercise(exercise) {
     <p class="voice-target ru-text">${exercise.answer}</p>
     <p class="voice-hint"><span class="phonetic-text">${exercise.ipa}</span> · ${exercise.zh}</p>
     <div class="stage-actions">
-      <button class="primary-btn" data-audio="slow" type="button">慢速</button>
+      <button class="primary-btn" data-audio="slow" type="button">逐词慢速</button>
       <button class="soft-btn" data-audio="normal" type="button">正常</button>
       <button class="listen-btn" data-repeat="start" type="button">开始跟读</button>
       <button class="ghost-btn" data-repeat="skip" type="button">现在不方便说</button>
@@ -530,6 +565,11 @@ function renderRepeatExercise(exercise) {
   `;
 
   card.querySelector('[data-audio="slow"]').addEventListener("click", () => {
+    if (exercise.slowMode === "word_by_word") {
+      speakTextWordByWord(exercise.answer, 0.68);
+      return;
+    }
+
     speakText(exercise.answer, 0.68);
   });
   card.querySelector('[data-audio="normal"]').addEventListener("click", () => {
@@ -617,14 +657,13 @@ function compareChoiceSets(actual, expected) {
 function renderLessonSummary(day) {
   const card = document.createElement("article");
   card.className = "exercise-card lesson-summary";
+  const reviewItems = day.review?.slice(0, 3) ?? [];
   card.innerHTML = `
     <span class="focus-card__label">今日完成</span>
     <strong>${day.theme ?? day.title}</strong>
-    <p>完成 ${day.exercises.length} 道题。今天的重点是：</p>
+    <p>完成 ${day.exercises.length} 道题。今天回收了这些重点：</p>
     <div class="summary-list">
-      <span>认识 А / О</span>
-      <span>听懂 Это Анна.</span>
-      <span>完成单词和整句跟读</span>
+      ${reviewItems.map((item) => `<span>${item.label}: <span class="ru-text">${item.answerRu}</span></span>`).join("")}
     </div>
   `;
   els.learnStage.appendChild(card);
@@ -1198,7 +1237,7 @@ function renderFooter() {
         ? "全年最后一天；点回到第一天可重新开始。"
         : isCycleDay
           ? "这是本轮复盘；点下一天进入下一轮。"
-        : "底部只切换整天；当天请点上面的 part1 / part2 / part3。"
+        : "底部只切换整天；当天内容请点上方标签切换。"
       : lastDay
         ? "全年复盘完成后，可回到第一天重新开始。"
         : isCycleDay
@@ -1340,11 +1379,7 @@ function initVoices() {
   window.speechSynthesis.addEventListener("voiceschanged", pickVoice);
 }
 
-function speakText(text, rate) {
-  if (!("speechSynthesis" in window)) {
-    return;
-  }
-
+function createRussianUtterance(text, rate) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ru-RU";
   utterance.rate = rate;
@@ -1353,8 +1388,48 @@ function speakText(text, rate) {
     utterance.voice = state.russianVoice;
   }
 
+  return utterance;
+}
+
+function speakText(text, rate) {
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
   window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  window.speechSynthesis.speak(createRussianUtterance(text, rate));
+}
+
+function speakTextWordByWord(text, rate) {
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
+  const words = text
+    .replace(/[.!?]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length <= 1) {
+    speakText(text, rate);
+    return;
+  }
+
+  let index = 0;
+  window.speechSynthesis.cancel();
+
+  const speakNext = () => {
+    if (index >= words.length) {
+      return;
+    }
+
+    const utterance = createRussianUtterance(words[index], rate);
+    index += 1;
+    utterance.onend = () => window.setTimeout(speakNext, 180);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  speakNext();
 }
 
 function startRecognition(targetText) {

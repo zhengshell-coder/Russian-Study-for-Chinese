@@ -153,8 +153,9 @@ russian-study-tool/
 
 迁移策略：
 - 新页面优先读取 `exercises`
-- 缺少 `exercises` 的日期可临时用旧字段生成基础题
-- 最终所有 `288` 天都迁移为 `exercises`
+- 当前所有 `288` 天都已由旧字段生成 `exercises`
+- 旧字段保留为课程源数据和后续精修依据
+- 页面层不再主动展示旧 `part` 结构
 
 字段规则：
 - `ru` / `exampleRu` 只存标准俄文

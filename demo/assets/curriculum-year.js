@@ -62,15 +62,16 @@ function makeDayOneExercises() {
     {
       id: "c1-d1-e1",
       type: "match_pairs",
-      prompt: "匹配俄语和中文",
+      prompt: "匹配俄语和含义",
+      targetLanguage: "mixed",
       pairs: [
-        { ru: "А а", ipa: "[a]", zh: "字母 a" },
-        { ru: "О о", ipa: "[o]", zh: "字母 o" },
-        { ru: "Анна", ipa: "[AN-na]", zh: "安娜" },
+        { ru: "А а", ipa: "[a]", zh: "字母 a", en: "letter a" },
+        { ru: "О о", ipa: "[o]", zh: "字母 o", en: "letter o" },
+        { ru: "Анна", ipa: "[AN-na]", zh: "安娜", en: "Anna" },
       ],
       feedback: {
         meaning: "А / О 是今天的核心字母，Анна 是例词。",
-        explanation: "先建立俄语字形和中文含义的连接。",
+        explanation: "先建立俄语字形、中文含义和英文辅助记忆的连接。",
       },
     },
     {
@@ -147,6 +148,7 @@ function makeDayOneExercises() {
       ipa: "[AN-na]",
       zh: "安娜",
       mode: "word",
+      slowMode: "word_by_word",
       feedback: {
         meaning: "Анна 是俄语人名。",
         explanation: "先把单词读稳，再进入整句跟读。",
@@ -160,12 +162,270 @@ function makeDayOneExercises() {
       ipa: "[E-ta AN-na]",
       zh: "这是安娜。",
       mode: "phrase",
+      slowMode: "word_by_word",
       feedback: {
         meaning: "Это Анна. = 这是安娜。",
         explanation: "今天的目标是认识 А / О，并能听读一个最小句。",
       },
     },
   ];
+}
+
+function makeGenericDayExercises(day) {
+  const phrases = getScenePhrases(day);
+  const mainPhrase = phrases[0] ?? day.voice;
+  const secondPhrase = phrases[1] ?? mainPhrase;
+  const mainTokens = tokenizeRu(mainPhrase.ru);
+  const secondTokens = tokenizeRu(secondPhrase.ru);
+  const wordPool = [...day.foundation, ...day.scene.words].filter(Boolean);
+  const pairItems = wordPool.slice(0, 3);
+  const firstWord = pairItems[0] ?? mainPhrase;
+  const choices = makeChoiceBank(mainTokens, wordPool);
+
+  return [
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e1`,
+      type: "match_pairs",
+      prompt: "匹配俄语和含义",
+      targetLanguage: "zh",
+      pairs: pairItems.map((item) => ({
+        ru: item.ru,
+        ipa: item.ipa,
+        zh: item.zh,
+      })),
+      feedback: {
+        meaning: `今天先认出：${pairItems.map((item) => item.ru).join(" / ")}`,
+        explanation: "先建立词形和含义，再进入句子。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e2`,
+      type: "listen_choose_words",
+      prompt: "听句子，选出你听到的词",
+      audioText: mainPhrase.ru,
+      ipa: mainPhrase.ipa,
+      zh: mainPhrase.zh,
+      correctTokens: mainTokens,
+      choices,
+      feedback: {
+        meaning: `${mainPhrase.ru} = ${mainPhrase.zh}`,
+        explanation: "先听整句，再抓关键词。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e3`,
+      type: "listen_order",
+      prompt: "按听到的顺序点词",
+      answer: mainPhrase.ru,
+      ipa: mainPhrase.ipa,
+      zh: mainPhrase.zh,
+      tokens: [...mainTokens].reverse(),
+      feedback: {
+        meaning: mainPhrase.zh,
+        explanation: "排序题用来训练听力和俄语语序。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e4`,
+      type: "sentence_builder",
+      prompt: "拼出这句话",
+      answer: mainPhrase.ru,
+      ipa: mainPhrase.ipa,
+      zh: mainPhrase.zh,
+      tokens: [...mainTokens].reverse(),
+      feedback: {
+        meaning: mainPhrase.zh,
+        explanation: "把刚才听到的句子主动拼出来。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e5`,
+      type: "copy_or_type_ru",
+      prompt: "把这句俄语输入一遍",
+      answer: mainPhrase.ru,
+      ipa: mainPhrase.ipa,
+      zh: mainPhrase.zh,
+      showAnswerBeforeTyping: true,
+      feedback: {
+        meaning: mainPhrase.zh,
+        explanation: "输入一遍能强化字母、拼写和词序。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e6`,
+      type: "sentence_builder",
+      prompt: "拼出变体句",
+      answer: secondPhrase.ru,
+      ipa: secondPhrase.ipa,
+      zh: secondPhrase.zh,
+      tokens: [...secondTokens].reverse(),
+      feedback: {
+        meaning: secondPhrase.zh,
+        explanation: "同一场景内换一个词或句子，避免死记一条。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e7`,
+      type: "repeat_after",
+      prompt: "跟读这个词",
+      answer: firstWord.ru,
+      ipa: firstWord.ipa,
+      zh: firstWord.zh,
+      mode: "word",
+      slowMode: "word_by_word",
+      feedback: {
+        meaning: firstWord.zh,
+        explanation: "先把关键词读稳。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-d${day.cycleDay}-e8`,
+      type: "repeat_after",
+      prompt: "跟读整句",
+      answer: mainPhrase.ru,
+      ipa: mainPhrase.ipa,
+      zh: mainPhrase.zh,
+      mode: "phrase",
+      slowMode: "word_by_word",
+      feedback: {
+        meaning: mainPhrase.zh,
+        explanation: "最后把今天的核心句完整说出来。",
+      },
+    },
+  ];
+}
+
+function makeCycleReviewExercises(day) {
+  const reviewPhrases = day.cycleSections.flatMap((section) => section.phrases);
+  const reviewWords = day.cycleSections.flatMap((section) => section.words);
+  const firstPhrase = reviewPhrases[0] ?? day.voice;
+  const middlePhrase = reviewPhrases[Math.floor(reviewPhrases.length / 2)] ?? firstPhrase;
+  const finalPhrase = day.voice;
+  const firstTokens = tokenizeRu(firstPhrase.ru);
+  const middleTokens = tokenizeRu(middlePhrase.ru);
+
+  return [
+    {
+      id: `c${day.cycleNumber}-review-e1`,
+      type: "match_pairs",
+      prompt: "复盘本轮高频词",
+      targetLanguage: "zh",
+      pairs: reviewWords.slice(0, 4).map((item) => ({
+        ru: item.ru,
+        ipa: item.ipa,
+        zh: item.zh,
+      })),
+      feedback: {
+        meaning: "把本轮出现过的词重新连回含义。",
+        explanation: "复盘日不学新内容，只回收前 11 天。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e2`,
+      type: "listen_choose_words",
+      prompt: "听旧句子，选择听到的词",
+      audioText: firstPhrase.ru,
+      ipa: firstPhrase.ipa,
+      zh: firstPhrase.zh,
+      correctTokens: firstTokens,
+      choices: makeChoiceBank(firstTokens, reviewWords),
+      feedback: {
+        meaning: firstPhrase.zh,
+        explanation: "用听句选词检查旧内容是否还熟悉。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e3`,
+      type: "listen_order",
+      prompt: "按听到的顺序点词",
+      answer: middlePhrase.ru,
+      ipa: middlePhrase.ipa,
+      zh: middlePhrase.zh,
+      tokens: [...middleTokens].reverse(),
+      feedback: {
+        meaning: middlePhrase.zh,
+        explanation: "把本轮句子重新做一次听力排序。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e4`,
+      type: "sentence_builder",
+      prompt: "拼出本轮整合句",
+      answer: finalPhrase.ru,
+      ipa: finalPhrase.ipa,
+      zh: finalPhrase.zh,
+      tokens: [...tokenizeRu(finalPhrase.ru)].reverse(),
+      feedback: {
+        meaning: finalPhrase.zh,
+        explanation: "第 12 天用整合句把前 11 天收束起来。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e5`,
+      type: "copy_or_type_ru",
+      prompt: "把整合句输入一遍",
+      answer: finalPhrase.ru,
+      ipa: finalPhrase.ipa,
+      zh: finalPhrase.zh,
+      showAnswerBeforeTyping: true,
+      feedback: {
+        meaning: finalPhrase.zh,
+        explanation: "复盘日用输入强化整轮核心表达。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e6`,
+      type: "listen_order",
+      prompt: "再听一次整合句并排序",
+      answer: finalPhrase.ru,
+      ipa: finalPhrase.ipa,
+      zh: finalPhrase.zh,
+      tokens: [...tokenizeRu(finalPhrase.ru)].reverse(),
+      feedback: {
+        meaning: finalPhrase.zh,
+        explanation: "复盘日最后用整合句检查整轮语序。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e7`,
+      type: "copy_or_type_ru",
+      prompt: "再输入一次整合句",
+      answer: finalPhrase.ru,
+      ipa: finalPhrase.ipa,
+      zh: finalPhrase.zh,
+      showAnswerBeforeTyping: true,
+      feedback: {
+        meaning: finalPhrase.zh,
+        explanation: "第二次输入用于强化整轮收束表达。",
+      },
+    },
+    {
+      id: `c${day.cycleNumber}-review-e8`,
+      type: "repeat_after",
+      prompt: "跟读本轮整合句",
+      answer: finalPhrase.ru,
+      ipa: finalPhrase.ipa,
+      zh: finalPhrase.zh,
+      mode: "phrase",
+      slowMode: "word_by_word",
+      feedback: {
+        meaning: finalPhrase.zh,
+        explanation: "用普通速度和逐词慢速完成最后复盘。",
+      },
+    },
+  ];
+}
+
+function tokenizeRu(value) {
+  return value
+    .replace(/[.,!?]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function makeChoiceBank(correctTokens, wordPool) {
+  const distractors = wordPool.flatMap((item) => tokenizeRu(item.ru));
+  return [...new Set([...correctTokens, ...distractors])].slice(0, Math.max(correctTokens.length + 2, 5));
 }
 
 function buildLessonDay(cycleDef, cycleDay, lessonDef) {
@@ -220,6 +480,8 @@ function buildLessonDay(cycleDef, cycleDay, lessonDef) {
   if (globalDay === 1) {
     day.theme = "认识 А / О，并听懂一个最小句";
     day.exercises = makeDayOneExercises();
+  } else {
+    day.exercises = makeGenericDayExercises(day);
   }
 
   return day;
@@ -265,7 +527,7 @@ function buildCycleReviewDay(cycleDef, cycleDays) {
     ),
   ];
 
-  return {
+  const day = {
     day: globalDay,
     cycleNumber: cycleDef.number,
     cycleDay: 12,
@@ -278,6 +540,10 @@ function buildCycleReviewDay(cycleDef, cycleDays) {
     review,
     cycleSections,
   };
+
+  day.exercises = makeCycleReviewExercises(day);
+
+  return day;
 }
 
 function getScenePhrases(day) {
