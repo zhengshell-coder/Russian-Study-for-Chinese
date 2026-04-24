@@ -88,10 +88,10 @@ Course
 - 语音从第一课开始：先听、再选、再跟读；慢速播放用于拆词和听清音节。
 
 参考来源：
-- Duolingo Method：interactive lessons、personalized practice、bite-sized lessons
-- Duolingo Learning Path：线性路径、小单元、复习内置在路径里
-- Duolingo Spaced Repetition：错题和旧内容按间隔回收
-- Duolingo Speaking：从第一课开始做单词、句子和对话式口语练习
+- Duolingo Method：https://blog.duolingo.com/duolingo-teaching-method/
+- Duolingo Learning Path：https://blog.duolingo.com/new-duolingo-home-screen-design/
+- Duolingo Spaced Repetition：https://blog.duolingo.com/spaced-repetition-for-learning/
+- Duolingo Mini-units：https://blog.duolingo.com/intermediate-mini-units/
 
 ## 4. 每日 Lesson 结构
 
