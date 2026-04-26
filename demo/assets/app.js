@@ -216,7 +216,7 @@ function renderLessonMode(day) {
   els.progressLabel.textContent = state.lesson.completed ? "今日完成" : `题 ${current} / ${total}`;
   els.progressNote.textContent = state.lesson.completed
     ? "今天的 Lesson 已完成。"
-    : exercise.prompt;
+    : day.theme ?? "";
   els.tabLearn.classList.add("is-active");
   els.tabReview.classList.remove("is-active");
   els.learnPanel.classList.add("is-active");
@@ -225,7 +225,7 @@ function renderLessonMode(day) {
   els.learnStepTitle.textContent = state.lesson.completed ? "今日总结" : exercise.prompt;
   els.learnStepNote.textContent = state.lesson.completed
     ? "可以进入下一天，也可以之后再回来复习。"
-    : day.theme ?? "";
+    : "";
   els.learnStage.innerHTML = "";
 
   if (state.lesson.completed) {

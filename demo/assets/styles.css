@@ -159,9 +159,10 @@ button:disabled {
 }
 
 .is-lesson-mode {
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
 }
 
+.is-lesson-mode .topbar,
 .is-lesson-mode .page-switch,
 .is-lesson-mode .day-badge {
   display: none;
@@ -176,6 +177,10 @@ button:disabled {
 .is-lesson-mode .progress-meta {
   min-width: 0;
   text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .is-lesson-mode .step-dots {
@@ -185,7 +190,7 @@ button:disabled {
 
 .lesson-progress {
   width: 100%;
-  height: 14px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
   background: #e5f1da;
@@ -302,8 +307,8 @@ button:disabled {
 
 .page-panel.is-active {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 14px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
   min-height: 0;
 }
 
@@ -327,6 +332,28 @@ button:disabled {
   -webkit-overflow-scrolling: touch;
 }
 
+.is-lesson-mode .main-card {
+  padding: 14px;
+}
+
+.is-lesson-mode .page-head {
+  gap: 2px;
+}
+
+.is-lesson-mode .mini-label,
+.is-lesson-mode .page-note {
+  display: none;
+}
+
+.is-lesson-mode .page-head h2 {
+  font-size: clamp(1.1rem, 4.6vw, 1.65rem);
+  line-height: 1.2;
+}
+
+.is-lesson-mode .learn-stage {
+  overflow: hidden;
+}
+
 .learn-card,
 .review-card,
 .voice-box,
@@ -342,6 +369,13 @@ button:disabled {
   display: grid;
   gap: 14px;
   align-content: start;
+}
+
+.is-lesson-mode .exercise-card {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  align-content: space-between;
 }
 
 .exercise-prompt,
@@ -843,6 +877,10 @@ button:disabled {
     gap: 10px;
   }
 
+  .is-lesson-mode {
+    gap: 8px;
+  }
+
   .feedback-grid {
     grid-template-columns: 1fr;
   }
@@ -902,12 +940,32 @@ button:disabled {
   }
 
   .is-lesson-mode .progress-card {
-    gap: 8px;
+    gap: 6px;
+    padding: 10px 12px;
+    box-shadow: none;
+  }
+
+  .is-lesson-mode .progress-meta {
+    font-size: 0.86rem;
+  }
+
+  .is-lesson-mode .progress-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .page-head h2 {
     font-size: 1.05rem;
     line-height: 1.3;
+  }
+
+  .is-lesson-mode .main-card {
+    padding: 10px;
+  }
+
+  .is-lesson-mode .page-panel.is-active {
+    gap: 8px;
   }
 
   .learn-card__title,
@@ -924,14 +982,24 @@ button:disabled {
     min-height: 46px;
   }
 
-  .page-switch,
-  .stage-actions {
+  .page-switch {
     align-items: stretch;
   }
 
-  .page-tab,
-  .stage-actions button {
+  .page-tab {
     width: 100%;
+  }
+
+  .is-lesson-mode .stage-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .is-lesson-mode .stage-actions button {
+    width: auto;
+    min-height: 44px;
+    padding: 9px 10px;
   }
 
   .focus-card,
@@ -943,18 +1011,63 @@ button:disabled {
   }
 
   .match-board {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .match-option,
   .token-option,
   .answer-token,
   .choice-option {
-    min-height: 52px;
+    min-height: 44px;
+    padding: 9px 10px;
+    border-radius: 14px;
+  }
+
+  .match-option {
+    font-size: 0.92rem;
+  }
+
+  .exercise-audio-row,
+  .token-bank,
+  .answer-slots,
+  .choice-bank {
+    gap: 7px;
+  }
+
+  .choice-option {
+    flex: 1 1 calc(50% - 7px);
+    text-align: center;
+  }
+
+  .copy-source {
+    padding: 12px;
+    font-size: 1.05rem;
   }
 
   .type-input {
-    min-height: 108px;
+    min-height: 82px;
+    max-height: 104px;
+    padding: 12px;
+  }
+
+  .answer-slots {
+    min-height: 54px;
+    padding: 8px;
+  }
+
+  .lesson-feedback {
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .lesson-feedback small {
+    display: none;
+  }
+
+  .lesson-feedback span {
+    line-height: 1.28;
   }
 
   .focus-nav {
@@ -989,6 +1102,12 @@ button:disabled {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     padding: 10px;
+  }
+
+  .is-lesson-mode .footer-nav {
+    grid-template-columns: 1fr;
+    padding: 8px;
+    box-shadow: none;
   }
 
   .footer-nav button {
