@@ -10,6 +10,35 @@ const reviewStepNotes = [
   "part3 用单词和整句双模式，把这一轮整体复盘。",
 ];
 
+const globalDistractorTokens = [
+  "я",
+  "ты",
+  "он",
+  "она",
+  "это",
+  "не",
+  "да",
+  "нет",
+  "тут",
+  "там",
+  "чай",
+  "кофе",
+  "вода",
+  "молоко",
+  "мама",
+  "папа",
+  "дом",
+  "окно",
+  "утро",
+  "вечер",
+  "хочу",
+  "есть",
+  "пить",
+  "идти",
+  "где",
+  "можно",
+];
+
 const e = (ru, ipa, zh) => ({ ru, ipa, zh });
 
 function lesson(title, foundations, phrases, options = {}) {
@@ -82,7 +111,7 @@ function makeDayOneExercises() {
       ipa: "[E-ta AN-na]",
       zh: "这是安娜。",
       correctTokens: ["Это", "Анна"],
-      choices: ["Это", "Анна", "окно", "я", "утро"],
+      choices: makeChoiceBank(["Это", "Анна"], [{ ru: "окно" }, { ru: "я" }, { ru: "утро" }]),
       feedback: {
         meaning: "Это Анна. = 这是安娜。",
         explanation: "先完整听一句，再从候选词里抓出真正听到的词。",
@@ -424,8 +453,11 @@ function tokenizeRu(value) {
 }
 
 function makeChoiceBank(correctTokens, wordPool) {
-  const distractors = wordPool.flatMap((item) => tokenizeRu(item.ru));
-  return [...new Set([...correctTokens, ...distractors])].slice(0, Math.max(correctTokens.length + 2, 5));
+  const normalizedCorrect = correctTokens.map((token) => token.toLowerCase());
+  const distractors = [...wordPool.flatMap((item) => tokenizeRu(item.ru)), ...globalDistractorTokens]
+    .filter((token) => !normalizedCorrect.includes(token.toLowerCase()));
+
+  return [...new Set([...correctTokens, ...distractors])].slice(0, Math.max(correctTokens.length + 4, 8));
 }
 
 function buildLessonDay(cycleDef, cycleDay, lessonDef) {

@@ -41,7 +41,7 @@ body {
 }
 
 .ru-text {
-  font-family: Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans", "DejaVu Sans", Arial, sans-serif;
   font-style: normal;
 }
 
@@ -163,18 +163,28 @@ button:disabled {
 }
 
 .is-lesson-mode .topbar,
-.is-lesson-mode .page-switch,
-.is-lesson-mode .day-badge {
+.is-lesson-mode .page-switch {
   display: none;
 }
 
 .is-lesson-mode .progress-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: auto 1fr;
   gap: 10px;
 }
 
+.is-lesson-mode .day-badge {
+  display: grid;
+  width: auto;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  box-shadow: none;
+}
+
 .is-lesson-mode .progress-meta {
+  grid-column: 1 / -1;
   min-width: 0;
   text-align: left;
   display: flex;
@@ -701,6 +711,12 @@ button:disabled {
   margin: 0;
 }
 
+.recognition-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .stage-actions {
   display: flex;
   gap: 10px;
@@ -865,6 +881,102 @@ button:disabled {
   line-height: 1.45;
 }
 
+.catalog-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  align-items: end;
+  padding: 12px;
+  background: rgba(21, 45, 25, 0.28);
+}
+
+.catalog-panel[hidden] {
+  display: none;
+}
+
+.catalog-sheet {
+  width: min(760px, 100%);
+  max-height: min(78dvh, 680px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(23, 62, 18, 0.22);
+}
+
+.catalog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.catalog-head strong {
+  font-size: 1.1rem;
+}
+
+.catalog-list {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.catalog-cycle {
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-cycle h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.catalog-days {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.catalog-day {
+  min-height: 58px;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  border: 2px solid #d7ead1;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.catalog-day strong {
+  font-size: 1rem;
+}
+
+.catalog-day span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-day--active {
+  border-color: var(--green);
+  background: #eef9e2;
+  color: var(--green-deep);
+}
+
 @media (max-width: 720px) {
   .app-shell {
     width: 100%;
@@ -943,6 +1055,16 @@ button:disabled {
     gap: 6px;
     padding: 10px 12px;
     box-shadow: none;
+  }
+
+  .is-lesson-mode .progress-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .is-lesson-mode .day-badge {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 0.82rem;
   }
 
   .is-lesson-mode .progress-meta {
@@ -1070,6 +1192,13 @@ button:disabled {
     line-height: 1.28;
   }
 
+  .recognition-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
   .focus-nav {
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
@@ -1120,5 +1249,23 @@ button:disabled {
 
   .is-lesson-mode .footer-note {
     display: none;
+  }
+
+  .catalog-panel {
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .catalog-sheet {
+    max-height: 82dvh;
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .catalog-days {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

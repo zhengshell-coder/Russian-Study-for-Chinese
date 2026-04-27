@@ -12,6 +12,7 @@ const state = {
   progress: loadProgress(),
   lesson: createInitialLessonState(),
   ui: {
+    catalogOpen: false,
     foundationIndex: {},
     sceneIndex: {},
     cycleFoundationSection: {},
@@ -50,6 +51,9 @@ const els = {
   prevBtn: document.querySelector("#prev-btn"),
   nextBtn: document.querySelector("#next-btn"),
   footerNote: document.querySelector("#footer-note"),
+  catalogPanel: document.querySelector("#catalog-panel"),
+  catalogList: document.querySelector("#catalog-list"),
+  catalogClose: document.querySelector("#catalog-close"),
 };
 
 init();
@@ -97,6 +101,8 @@ function createInitialLessonState(dayNumber = null) {
     matchedPairs: [],
     textInput: "",
     spoken: false,
+    recognitionStatus: "idle",
+    recognitionResult: null,
   };
 }
 
@@ -157,6 +163,34 @@ function bindEvents() {
   });
 
   els.prevBtn.addEventListener("click", handlePrev);
+  els.dayBadge.addEventListener("click", () => {
+    if (!hasLessonEngine(getCurrentDay())) {
+      return;
+    }
+
+    state.ui.catalogOpen = true;
+    renderCatalog();
+  });
+  els.catalogClose.addEventListener("click", () => {
+    state.ui.catalogOpen = false;
+    renderCatalog();
+  });
+  els.catalogPanel.addEventListener("click", (event) => {
+    if (event.target !== els.catalogPanel) {
+      return;
+    }
+
+    state.ui.catalogOpen = false;
+    renderCatalog();
+  });
+  els.catalogList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-day-index]");
+    if (!button) {
+      return;
+    }
+
+    jumpToDay(Number(button.dataset.dayIndex));
+  });
   els.nextBtn.addEventListener("click", () => {
     if (hasLessonEngine(getCurrentDay())) {
       handleLessonPrimary();
@@ -211,7 +245,9 @@ function renderLessonMode(day) {
   els.appShell.classList.add("is-lesson-mode");
   els.cycleTitle.textContent = `周期 ${day.cycleNumber} · 第 ${day.cycleDay} 天`;
   els.unitTitle.textContent = day.theme ?? day.title.replace(`${day.cycleLabel} · `, "");
-  els.dayBadge.textContent = String(day.cycleDay);
+  els.dayBadge.textContent = "目录";
+  els.dayBadge.setAttribute("aria-label", "打开学习目录");
+  els.dayBadge.disabled = state.lesson.recognitionStatus === "listening";
   els.stepDots.innerHTML = `<div class="lesson-progress"><span style="width: ${state.lesson.completed ? 100 : (current - 1) / total * 100}%"></span></div>`;
   els.progressLabel.textContent = state.lesson.completed ? "今日完成" : `题 ${current} / ${total}`;
   els.progressNote.textContent = state.lesson.completed
@@ -235,6 +271,7 @@ function renderLessonMode(day) {
   }
 
   renderLessonFooter(day);
+  renderCatalog();
 }
 
 function getExerciseLabel(type) {
@@ -250,24 +287,88 @@ function getExerciseLabel(type) {
   return labels[type] ?? "练习";
 }
 
+function renderCatalog() {
+  els.catalogPanel.hidden = !state.ui.catalogOpen;
+
+  if (!state.ui.catalogOpen) {
+    return;
+  }
+
+  const grouped = days.reduce((groups, day, index) => {
+    const key = day.cycleNumber;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+
+    groups.get(key).push({ day, index });
+    return groups;
+  }, new Map());
+
+  els.catalogList.innerHTML = "";
+
+  grouped.forEach((items, cycleNumber) => {
+    const section = document.createElement("section");
+    section.className = "catalog-cycle";
+    section.innerHTML = `<h3>第 ${cycleNumber} 轮</h3><div class="catalog-days"></div>`;
+    const dayGrid = section.querySelector(".catalog-days");
+
+    items.forEach(({ day, index }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `catalog-day${index === state.progress.dayIndex ? " catalog-day--active" : ""}`;
+      button.dataset.dayIndex = String(index);
+      button.innerHTML = `<strong>${day.cycleDay}</strong><span>${day.cycleDay === 12 ? "复盘" : day.theme}</span>`;
+      dayGrid.appendChild(button);
+    });
+
+    els.catalogList.appendChild(section);
+  });
+}
+
+function jumpToDay(dayIndex) {
+  if (!Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex >= days.length) {
+    return;
+  }
+
+  state.progress.dayIndex = dayIndex;
+  state.progress.page = "learn";
+  state.progress.learnStepIndex = 0;
+  state.ui.catalogOpen = false;
+  state.lesson = createInitialLessonState();
+  resetVoiceSelection();
+  resetVoiceFeedback();
+  saveProgress();
+  render();
+}
+
 function renderLessonFooter(day) {
+  const isRecognizing = state.lesson.recognitionStatus === "listening";
   els.prevBtn.style.display = "none";
+  els.nextBtn.disabled = isRecognizing;
   els.footerNote.textContent = state.lesson.completed
     ? "Lesson 完成。继续下一天，或之后再回来复习。"
+    : isRecognizing
+      ? "正在识别语音，完成后可继续。"
     : state.lesson.checked
       ? state.lesson.isCorrect
         ? "答对了，继续下一题。"
-        : "可以修改后再检查。"
+        : "答错也可以继续；想重试就先修改答案。"
       : "完成当前题后点击检查。";
   els.nextBtn.textContent = state.lesson.completed
     ? "进入下一天"
-    : state.lesson.checked && state.lesson.isCorrect
+    : isRecognizing
+      ? "识别中"
+    : state.lesson.checked
       ? "继续"
       : "检查";
 }
 
 function handleLessonPrimary() {
   const day = getCurrentDay();
+
+  if (state.lesson.recognitionStatus === "listening") {
+    return;
+  }
 
   if (state.lesson.completed) {
     handleNext();
@@ -276,7 +377,7 @@ function handleLessonPrimary() {
 
   const exercise = getCurrentExercise(day);
 
-  if (state.lesson.checked && state.lesson.isCorrect) {
+  if (state.lesson.checked) {
     advanceLesson(day);
     return;
   }
@@ -307,6 +408,8 @@ function resetLessonAttempt() {
   state.lesson.matchedPairs = [];
   state.lesson.textInput = "";
   state.lesson.spoken = false;
+  state.lesson.recognitionStatus = "idle";
+  state.lesson.recognitionResult = null;
 }
 
 function renderExercise(exercise) {
@@ -553,9 +656,16 @@ function renderCopyOrTypeExercise(exercise) {
 function renderRepeatExercise(exercise) {
   const card = document.createElement("article");
   card.className = "exercise-card";
+  const recognitionText =
+    state.lesson.recognitionStatus === "listening"
+      ? '<p class="recognition-note">正在听，请读完这句俄语。</p>'
+      : state.lesson.recognitionResult
+        ? `<p class="recognition-note">识别：${state.lesson.recognitionResult.transcript || "未识别到"} · ${state.lesson.recognitionResult.score} 分</p>`
+        : "";
   card.innerHTML = `
     <p class="voice-target ru-text">${exercise.answer}</p>
     <p class="voice-hint"><span class="phonetic-text">${exercise.ipa}</span> · ${exercise.zh}</p>
+    ${recognitionText}
     <div class="stage-actions">
       <button class="primary-btn" data-audio="slow" type="button">逐词慢速</button>
       <button class="soft-btn" data-audio="normal" type="button">正常</button>
@@ -576,16 +686,49 @@ function renderRepeatExercise(exercise) {
     speakText(exercise.answer, 0.92);
   });
   card.querySelector('[data-repeat="start"]').addEventListener("click", () => {
-    state.lesson.spoken = true;
-    state.lesson.checked = true;
-    state.lesson.isCorrect = true;
-    startRecognition(exercise.answer);
+    state.lesson.spoken = false;
+    state.lesson.checked = false;
+    state.lesson.isCorrect = false;
+    state.lesson.recognitionStatus = "listening";
+    state.lesson.recognitionResult = null;
+    startRecognition(exercise.answer, {
+      onEvaluate: (evaluation, transcript) => {
+        state.lesson.spoken = true;
+        state.lesson.checked = true;
+        state.lesson.isCorrect = evaluation.score >= 70;
+        state.lesson.recognitionStatus = "done";
+        state.lesson.recognitionResult = { ...evaluation, transcript };
+        render();
+      },
+      onError: () => {
+        state.lesson.spoken = true;
+        state.lesson.checked = true;
+        state.lesson.isCorrect = false;
+        state.lesson.recognitionStatus = "error";
+        state.lesson.recognitionResult = {
+          score: 0,
+          transcript: "未识别到",
+          feedback: "没有听清，可以继续，也可以重试。",
+          status: "没有听清",
+          wordHits: [],
+        };
+        render();
+      },
+    });
     render();
   });
   card.querySelector('[data-repeat="skip"]').addEventListener("click", () => {
     state.lesson.spoken = true;
     state.lesson.checked = true;
-    state.lesson.isCorrect = true;
+    state.lesson.isCorrect = false;
+    state.lesson.recognitionStatus = "skipped";
+    state.lesson.recognitionResult = {
+      score: 0,
+      transcript: "已跳过",
+      feedback: "这题未做语音判断，但可以继续。",
+      status: "已跳过",
+      wordHits: [],
+    };
     render();
   });
 
@@ -605,12 +748,18 @@ function appendFeedback(card, exercise) {
     return;
   }
 
+  const recognitionResult =
+    exercise.type === "repeat_after" ? state.lesson.recognitionResult : null;
+  const meaning = recognitionResult
+    ? `${recognitionResult.status}。识别：${recognitionResult.transcript}`
+    : exercise.feedback?.meaning ?? exercise.zh ?? "";
+  const explanation = recognitionResult?.feedback ?? exercise.feedback?.explanation ?? "";
   const feedback = document.createElement("div");
   feedback.className = `lesson-feedback${state.lesson.isCorrect ? " lesson-feedback--ok" : " lesson-feedback--retry"}`;
   feedback.innerHTML = `
     <strong>${state.lesson.isCorrect ? "正确" : "再试一次"}</strong>
-    <span>Meaning: ${exercise.feedback?.meaning ?? exercise.zh ?? ""}</span>
-    <small>${exercise.feedback?.explanation ?? ""}</small>
+    <span>Meaning: ${meaning}</span>
+    <small>${explanation}</small>
   `;
   card.appendChild(feedback);
 }
@@ -633,7 +782,7 @@ function evaluateExercise(exercise) {
   }
 
   if (exercise.type === "repeat_after") {
-    return state.lesson.spoken;
+    return state.lesson.spoken && (state.lesson.recognitionResult?.score ?? 0) >= 70;
   }
 
   return false;
@@ -1432,11 +1581,12 @@ function speakTextWordByWord(text, rate) {
   speakNext();
 }
 
-function startRecognition(targetText) {
+function startRecognition(targetText, callbacks = {}) {
   const Recognition =
     window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
   if (!Recognition) {
+    callbacks.onError?.();
     state.voiceResult = {
       day: getCurrentDay().day,
       scoreText: "不可用",
@@ -1474,6 +1624,7 @@ function startRecognition(targetText) {
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript.trim();
     const evaluation = evaluateVoiceAttempt(transcript, targetText);
+    callbacks.onEvaluate?.(evaluation, transcript);
     state.voiceResult = {
       day: getCurrentDay().day,
       scoreText: `${evaluation.score} 分`,
@@ -1487,6 +1638,7 @@ function startRecognition(targetText) {
   };
 
   recognition.onerror = () => {
+    callbacks.onError?.();
     state.voiceResult = {
       day: getCurrentDay().day,
       scoreText: "0 分",
